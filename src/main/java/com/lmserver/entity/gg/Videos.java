@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@IdClass(VideosId.class)
 @Table(name = "videos")
 public class Videos {
 
@@ -38,9 +39,11 @@ public class Videos {
     private String reviewStatus;
 
     @Column(name = "is_public")
-    private Long isPublic;
+    private Boolean isPublic;
 
     @Column(name = "imported_at")
     private LocalDateTime importedAt;
 
+    @Column(name = "channel_name")
+    private String channelName;
 }

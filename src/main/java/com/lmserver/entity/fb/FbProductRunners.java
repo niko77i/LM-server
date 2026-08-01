@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@IdClass(FbProductRunnersId.class)
 @Table(name = "fb_product_runners")
 public class FbProductRunners {
 
@@ -19,5 +20,4 @@ public class FbProductRunners {
     @Id
     @Column(name = "user_id")
     private Long userId;
-
 }

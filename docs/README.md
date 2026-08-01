@@ -92,7 +92,8 @@ LM-Server/
 |------|------|------|
 | Phase 1 | 项目骨架搭建 + JWT 安全 | ✅ |
 | Phase 2 | 前端拷贝 + MySQL 数据迁移 | ✅ |
-| Phase 3 | GG 核心业务 | 待开始 |
-| Phase 4 | FB 核心业务 | 待开始 |
-| Phase 5 | 辅助功能 | 待开始 |
-| Phase 6 | 测试与上线 | 待开始 |
+| Phase 3 | 40个 Entity + Repository | ✅ |
+| Phase 4 | GG 核心业务 (Controller/Service) | 待开始 |
+| Phase 5 | FB 核心业务 | 待开始 |
+| Phase 6 | 辅助功能 (视频/AI/通知) | 待开始 |
+| Phase 7 | 测试与上线 | 待开始 |

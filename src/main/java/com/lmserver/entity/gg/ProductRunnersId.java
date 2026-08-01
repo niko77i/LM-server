@@ -1,23 +1,14 @@
 package com.lmserver.entity.gg;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.io.Serializable;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@IdClass(ProductRunnersId.class)
-@Table(name = "product_runners")
-public class ProductRunners {
-
-    @Id
-    @Column(name = "product_id")
+public class ProductRunnersId implements Serializable {
     private Long productId;
-
-    @Id
-    @Column(name = "user_id")
     private Long userId;
 }
