@@ -15,12 +15,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 视频处理控制器 — /api/video/* 和 /api/audio-replace/*。
- * AI 视频生成、FFmpeg 合成、音频替换。
+ * 视频处理控制器 — /api/video/* 和 /api/audio-replace/*，AI生成/FFmpeg合成/音频替换。
  * Phase 5: FFmpeg 和 AI Provider 待对接。
- */
-/**
- * 视频处理控制器 — /api/video/* 和 /api/audio-replace/*，AI生成/FFmpeg合成/音频替换
  */
 @RestController
 @RequestMapping("/api")

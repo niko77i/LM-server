@@ -6,11 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * Google Ads 集成控制器 — /api/google-ads/*。
- * Phase 5: 待对接 Google Ads API（拉取广告系列报告）。
- */
-/**
- * Google Ads 集成控制器 — /api/google-ads/*，待对接API拉取广告报告
+ * Google Ads 集成控制器 — /api/google-ads/*，待对接 API 拉取广告报告。
  */
 @RestController
 @RequestMapping("/api/google-ads")

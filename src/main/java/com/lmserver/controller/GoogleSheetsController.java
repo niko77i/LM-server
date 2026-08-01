@@ -6,11 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * Google Sheets 集成控制器 — /api/google-sheets/*。
- * Phase 5: 待对接 Google Sheets API（读取/写入/同步）。
- */
-/**
- * Google Sheets 集成控制器 — /api/google-sheets/*，待对接API实现读写和同步
+ * Google Sheets 集成控制器 — /api/google-sheets/*，待对接 API 实现读写和同步。
  */
 @RestController
 @RequestMapping("/api/google-sheets")

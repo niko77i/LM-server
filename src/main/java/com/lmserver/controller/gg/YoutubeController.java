@@ -20,11 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * YouTube 视频管理控制器 — /api/youtube/*。
- * 管理视频导入/列表/编辑、标签配置、消耗追踪。
- */
-/**
- * YouTube 视频管理控制器 — /api/youtube/*，视频CRUD/批量导入/消耗追踪/标签配置
+ * YouTube 视频管理控制器 — /api/youtube/*，视频CRUD/批量导入/消耗追踪/标签配置。
  */
 @RestController
 @RequestMapping("/api/youtube")
