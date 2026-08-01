@@ -16,6 +16,24 @@ CREATE TABLE IF NOT EXISTS users (
     token_version INT DEFAULT 0
 );
 
+-- 产品表 (用于 ProductServiceTest)
+CREATE TABLE IF NOT EXISTS products (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    product_name VARCHAR(500),
+    kpi VARCHAR(500),
+    region VARCHAR(200),
+    status VARCHAR(100) DEFAULT 'active',
+    customer VARCHAR(500),
+    sales_person_id BIGINT NULL,
+    mcc_id BIGINT NULL,
+    agency_ratio DOUBLE NULL,
+    owner_id BIGINT NULL,
+    runner_ids VARCHAR(1000) DEFAULT '[]',
+    is_archived BIGINT DEFAULT 0,
+    deleted_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 测试账户 (BCrypt for '1976xiaobai')
 INSERT INTO users (id, username, password, role, display_name, platform)
 VALUES (1, 'carl567', '$2a$10$HZ1fRn4UryGjpT2rPTqVx.N4hYFv9vx3LXwQWZfrYT7I2DZd93lru', 'developer', '系统管理员', 'gg');
