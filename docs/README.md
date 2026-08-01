@@ -30,7 +30,7 @@ cd frontend && npm run dev
 
 ```
 POST /api/auth/login
-{"username":"carl567", "password":"admin123"}
+{"username":"carl567", "password":"1976xiaobai"}
 ```
 
 ## 项目结构

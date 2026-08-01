@@ -2,53 +2,48 @@ package com.lmserver.service.impl;
 
 import com.lmserver.dto.response.LoginResponse;
 import com.lmserver.dto.response.LoginResponse.UserInfo;
+import com.lmserver.entity.common.Users;
 import com.lmserver.enums.UserRole;
+import com.lmserver.repository.common.UsersRepository;
 import com.lmserver.security.JwtTokenProvider;
 import com.lmserver.service.AuthService;
-import com.lmserver.util.PasswordUtil;
-import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+    private final UsersRepository usersRepository;
     private final JwtTokenProvider jwtTokenProvider;
-    private final Map<Long, MemoryUser> users = new ConcurrentHashMap<>();
-    private final AtomicLong idGen = new AtomicLong(1);
-
-    public AuthServiceImpl(JwtTokenProvider jwtTokenProvider) {
-        this.jwtTokenProvider = jwtTokenProvider;
-    }
-
-    @PostConstruct
-    public void init() {
-        MemoryUser dev = new MemoryUser(
-                idGen.getAndIncrement(), "carl567",
-                PasswordUtil.encode("admin123"),
-                "developer", "gg", "系统管理员");
-        users.put(dev.id, dev);
-        log.info("Phase 1 初始化: 已创建 developer 账户 (carl567 / admin123)");
-    }
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public LoginResponse login(String username, String password) {
-        MemoryUser user = users.values().stream()
-                .filter(u -> u.username.equals(username))
-                .findFirst().orElse(null);
+        Users user = usersRepository.findByUsername(username).orElse(null);
+        if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
+            return null;
+        }
+        UserRole role = UserRole.fromValue(user.getRole());
+        if (!role.canLogin()) {
+            return null;
+        }
 
-        if (user == null || !PasswordUtil.matches(password, user.password)) return null;
-        if (!UserRole.fromValue(user.role).canLogin()) return null;
+        String accessToken = jwtTokenProvider.createAccessToken(
+                user.getId(), user.getRole(), user.getPlatform(), 0);
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId(), 0);
 
-        String accessToken = jwtTokenProvider.createAccessToken(user.id, user.role, user.platform, 0);
-        String refreshToken = jwtTokenProvider.createRefreshToken(user.id, 0);
+        // 更新最后登录时间
+        user.setLastLogin(LocalDateTime.now());
+        usersRepository.save(user);
 
-        log.info("用户登录成功: {} (角色: {})", user.username, user.role);
+        log.info("用户登录成功: {} (角色: {})", user.getUsername(), user.getRole());
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -58,16 +53,19 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public UserInfo register(String username, String password, String displayName) {
-        boolean exists = users.values().stream().anyMatch(u -> u.username.equals(username));
-        if (exists) return null;
+        if (usersRepository.findByUsername(username).isPresent()) {
+            return null;
+        }
+        Users user = new Users();
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setRole("user");
+        user.setPlatform("gg");
+        user.setDisplayName(displayName != null ? displayName : username);
+        user.setCreatedAt(LocalDateTime.now());
+        usersRepository.save(user);
 
-        MemoryUser user = new MemoryUser(
-                idGen.getAndIncrement(), username,
-                PasswordUtil.encode(password),
-                "user", "gg",
-                displayName != null ? displayName : username);
-        users.put(user.id, user);
-        log.info("用户注册成功: {} (id={})", username, user.id);
+        log.info("用户注册成功: {} (id={})", username, user.getId());
         return toUserInfo(user);
     }
 
@@ -76,40 +74,20 @@ public class AuthServiceImpl implements AuthService {
         if (!jwtTokenProvider.validateToken(refreshToken) || !jwtTokenProvider.isRefreshToken(refreshToken)) {
             return null;
         }
-        MemoryUser user = users.get(jwtTokenProvider.getUserId(refreshToken));
+        Users user = usersRepository.findById(jwtTokenProvider.getUserId(refreshToken)).orElse(null);
         if (user == null) return null;
-        return jwtTokenProvider.createAccessToken(user.id, user.role, user.platform, 0);
+        return jwtTokenProvider.createAccessToken(user.getId(), user.getRole(), user.getPlatform(), 0);
     }
 
     @Override
     public UserInfo getCurrentUser(Long userId) {
-        MemoryUser user = users.get(userId);
-        return user != null ? toUserInfo(user) : null;
+        return usersRepository.findById(userId).map(this::toUserInfo).orElse(null);
     }
 
-    private UserInfo toUserInfo(MemoryUser u) {
+    private UserInfo toUserInfo(Users u) {
         return UserInfo.builder()
-                .id(u.id).username(u.username).role(u.role)
-                .platform(u.platform).displayName(u.displayName)
+                .id(u.getId()).username(u.getUsername()).role(u.getRole())
+                .platform(u.getPlatform()).displayName(u.getDisplayName())
                 .build();
-    }
-
-    private static class MemoryUser {
-        final Long id;
-        final String username;
-        final String password;
-        final String role;
-        final String platform;
-        final String displayName;
-
-        MemoryUser(Long id, String username, String password,
-                   String role, String platform, String displayName) {
-            this.id = id;
-            this.username = username;
-            this.password = password;
-            this.role = role;
-            this.platform = platform;
-            this.displayName = displayName;
-        }
     }
 }
