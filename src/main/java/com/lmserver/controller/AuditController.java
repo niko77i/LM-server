@@ -1,0 +1,28 @@
+package com.lmserver.controller;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lmserver.dto.response.ApiResponse;
+import com.lmserver.dto.response.PagedResponse;
+import com.lmserver.entity.common.AuditLog;
+import com.lmserver.mapper.common.AuditLogMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/audit-log")
+@RequiredArgsConstructor
+public class AuditController {
+
+    private final AuditLogMapper mapper;
+
+    @GetMapping("/list")
+    public PagedResponse<AuditLog> list(@RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size, @RequestParam(required = false) String action) {
+        var qw = new LambdaQueryWrapper<AuditLog>();
+        if (action != null && !action.isBlank()) qw.eq(AuditLog::getAction, action);
+        qw.orderByDesc(AuditLog::getCreatedAt);
+        var pg = mapper.selectPage(new Page<>(page, size), qw);
+        return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
+    }
+}
