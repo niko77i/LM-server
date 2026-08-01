@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface AccountStatusesRepository extends JpaRepository<AccountStatuses, Long> {
+    java.util.List<AccountStatuses> findByOwnerIdAndPlatformOrderByCreatedAtDesc(Long ownerId, String platform);
 }

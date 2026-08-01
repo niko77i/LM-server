@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface SalesPersonsRepository extends JpaRepository<SalesPersons, Long> {
+    java.util.List<SalesPersons> findByOwnerIdAndPlatformOrderByCreatedAtDesc(Long ownerId, String platform);
 }

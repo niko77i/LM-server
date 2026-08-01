@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MccLevelsRepository extends JpaRepository<MccLevels, Long> {
+    java.util.List<MccLevels> findByOwnerIdOrderByCreatedAtDesc(Long ownerId);
 }

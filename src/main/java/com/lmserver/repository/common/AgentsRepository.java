@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface AgentsRepository extends JpaRepository<Agents, Long> {
+    java.util.List<Agents> findByOwnerIdOrderByCreatedAtDesc(Long ownerId);
 }

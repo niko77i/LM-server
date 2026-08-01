@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface RegionsRepository extends JpaRepository<Regions, Long> {
+    java.util.List<Regions> findByPlatform(String platform);
 }
