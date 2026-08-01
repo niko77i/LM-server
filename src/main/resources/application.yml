@@ -36,16 +36,6 @@ mybatis-plus:
       logic-delete-value: "NOW()"
       logic-not-delete-value: "NULL"
 
-  jackson:
-    date-format: yyyy-MM-dd HH:mm:ss
-    time-zone: Asia/Shanghai
-    default-property-inclusion: non_null
-
-  servlet:
-    multipart:
-      max-file-size: 500MB
-      max-request-size: 500MB
-
   # SMTP 邮件（QQ邮箱）
   mail:
     host: smtp.qq.com
@@ -58,6 +48,28 @@ mybatis-plus:
           auth: true
           ssl:
             enable: true
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+
+# Actuator 监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# SpringDoc Swagger
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
 
 # JWT 配置
 jwt:

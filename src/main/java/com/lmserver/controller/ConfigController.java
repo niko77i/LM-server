@@ -27,7 +27,7 @@ public class ConfigController {
     @GetMapping("/list")
     /** 分页列表查询 — 支持多条件筛选 */
     public ApiResponse<List<Config>> list() {
-        return ApiResponse.ok(mapper.selectList(null));
+        return ApiResponse.ok(mapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>()));
     }
 
     @GetMapping("/{key}")

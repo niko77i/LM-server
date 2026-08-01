@@ -24,13 +24,13 @@ public class NotificationServiceImpl implements NotificationService {
     private final JavaMailSender mailSender;
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:}")
     private String fromEmail;
 
-    @Value("${notification.telegram.bot-token}")
+    @Value("${notification.telegram.bot-token:}")
     private String botToken;
 
-    @Value("${notification.telegram.chat-id}")
+    @Value("${notification.telegram.chat-id:0}")
     private String chatId;
 
     public NotificationServiceImpl(@org.springframework.beans.factory.annotation.Autowired(required = false) JavaMailSender mailSender) {

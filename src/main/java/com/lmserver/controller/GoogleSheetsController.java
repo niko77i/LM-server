@@ -49,19 +49,4 @@ public class GoogleSheetsController {
         }
     }
 
-    /** 追加数据到 Sheet 末尾 */
-    @PostMapping("/append")
-    public ApiResponse<String> append(@RequestBody Map<String, Object> body) {
-        try {
-            String spreadsheetId = (String) body.get("spreadsheet_id");
-            String range = (String) body.getOrDefault("range", "A1");
-            @SuppressWarnings("unchecked")
-            List<List<Object>> values = (List<List<Object>>) body.get("values");
-            sheetsService.append(spreadsheetId, range, values);
-            return ApiResponse.ok("追加成功");
-        } catch (Exception e) {
-            log.error("Sheet 追加失败", e);
-            return ApiResponse.fail("追加失败: " + e.getMessage());
-        }
-    }
 }
