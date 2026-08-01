@@ -19,6 +19,9 @@ import java.util.Map;
  * AI 视频生成、FFmpeg 合成、音频替换。
  * Phase 5: FFmpeg 和 AI Provider 待对接。
  */
+/**
+ * 视频处理控制器 — /api/video/* 和 /api/audio-replace/*，AI生成/FFmpeg合成/音频替换
+ */
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -28,8 +31,7 @@ public class VideoController {
     private final VideoHistoryMapper videoHistoryMapper;
     private final AudioReplaceHistoryMapper audioReplaceMapper;
 
-    /** 提交视频生成任务 */
-    @PostMapping("/video/generate")
+        @PostMapping("/video/generate")
     public ApiResponse<VideoTasks> generate(@RequestBody Map<String, Object> body) {
         VideoTasks task = new VideoTasks();
         task.setTaskId(java.util.UUID.randomUUID().toString());
@@ -42,16 +44,14 @@ public class VideoController {
         return ApiResponse.ok(task);
     }
 
-    /** 查询任务进度 */
-    @GetMapping("/video/progress/{taskId}")
+        @GetMapping("/video/progress/{taskId}")
     public ApiResponse<VideoTasks> progress(@PathVariable String taskId) {
         var list = videoTasksMapper.selectList(
                 new LambdaQueryWrapper<VideoTasks>().eq(VideoTasks::getTaskId, taskId));
         return !list.isEmpty() ? ApiResponse.ok(list.get(0)) : ApiResponse.fail("任务不存在");
     }
 
-    /** 视频生成历史 */
-    @GetMapping("/video/history")
+        @GetMapping("/video/history")
     public ApiResponse<List<VideoHistory>> history(@RequestParam(required = false) String pkg) {
         var qw = new LambdaQueryWrapper<VideoHistory>();
         if (pkg != null && !pkg.isBlank()) qw.eq(VideoHistory::getPkg, pkg);
@@ -59,8 +59,7 @@ public class VideoController {
         return ApiResponse.ok(videoHistoryMapper.selectList(qw));
     }
 
-    /** 保存视频生成历史配置 */
-    @PostMapping("/video/history")
+        @PostMapping("/video/history")
     public ApiResponse<VideoHistory> saveHistory(@RequestBody Map<String, Object> body) {
         VideoHistory h = new VideoHistory();
         h.setPkg((String) body.getOrDefault("package", ""));
@@ -72,15 +71,13 @@ public class VideoController {
         return ApiResponse.ok(h);
     }
 
-    /** 查询任务列表 */
-    @GetMapping("/video/tasks")
+        @GetMapping("/video/tasks")
     public ApiResponse<List<VideoTasks>> tasks() {
         return ApiResponse.ok(videoTasksMapper.selectList(
                 new LambdaQueryWrapper<VideoTasks>().orderByDesc(VideoTasks::getCreatedAt)));
     }
 
-    /** 音频替换历史 */
-    @GetMapping("/audio-replace/history")
+        @GetMapping("/audio-replace/history")
     public ApiResponse<List<AudioReplaceHistory>> audioHistory() {
         return ApiResponse.ok(audioReplaceMapper.selectList(
                 new LambdaQueryWrapper<AudioReplaceHistory>().orderByDesc(AudioReplaceHistory::getCreatedAt)));

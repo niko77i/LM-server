@@ -23,6 +23,9 @@ import java.util.Map;
  * YouTube 视频管理控制器 — /api/youtube/*。
  * 管理视频导入/列表/编辑、标签配置、消耗追踪。
  */
+/**
+ * YouTube 视频管理控制器 — /api/youtube/*，视频CRUD/批量导入/消耗追踪/标签配置
+ */
 @RestController
 @RequestMapping("/api/youtube")
 @RequiredArgsConstructor
@@ -32,8 +35,7 @@ public class YoutubeController {
     private final VideoConsumptionMapper consumptionMapper;
     private final TagsMapper tagsMapper;
 
-    /** 视频分页列表 — 支持按地区/融帧类型/成效/审核状态筛选 */
-    @GetMapping("/list")
+        @GetMapping("/list")
     public PagedResponse<Videos> list(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -51,8 +53,7 @@ public class YoutubeController {
         return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
     }
 
-    /** 获取单个视频详情 */
-    @GetMapping("/{id}")
+        @GetMapping("/{id}")
     public ApiResponse<Videos> detail(@PathVariable String id,
             @AuthenticationPrincipal UserPrincipal principal) {
         var v = videosMapper.selectList(new LambdaQueryWrapper<Videos>()
@@ -60,8 +61,7 @@ public class YoutubeController {
         return !v.isEmpty() ? ApiResponse.ok(v.get(0)) : ApiResponse.fail("视频不存在");
     }
 
-    /** 编辑视频元数据 */
-    @PutMapping("/{id}")
+        @PutMapping("/{id}")
     public ApiResponse<Videos> update(@PathVariable String id,
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, String> body) {
@@ -80,8 +80,7 @@ public class YoutubeController {
         return ApiResponse.ok(v);
     }
 
-    /** 批量导入视频 */
-    @PostMapping("/import")
+        @PostMapping("/import")
     public ApiResponse<Integer> importVideos(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody List<Map<String, String>> items) {
         int count = 0;
@@ -103,8 +102,7 @@ public class YoutubeController {
         return ApiResponse.ok(count);
     }
 
-    /** 记录视频消耗 */
-    @PostMapping("/consumption")
+        @PostMapping("/consumption")
     public ApiResponse<VideoConsumption> addConsumption(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, Object> body) {
         VideoConsumption vc = new VideoConsumption();
@@ -118,8 +116,7 @@ public class YoutubeController {
         return ApiResponse.ok(vc);
     }
 
-    /** 消耗记录列表 */
-    @GetMapping("/consumption/list")
+        @GetMapping("/consumption/list")
     public PagedResponse<VideoConsumption> consumptionList(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String videoId) {
@@ -130,14 +127,12 @@ public class YoutubeController {
         return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
     }
 
-    /** 标签管理 — 获取所有标签 */
-    @GetMapping("/tags")
+        @GetMapping("/tags")
     public ApiResponse<List<Tags>> getTags() {
         return ApiResponse.ok(tagsMapper.selectList(null));
     }
 
-    /** 标签管理 — 保存标签 */
-    @PutMapping("/tags/{key}")
+        @PutMapping("/tags/{key}")
     public ApiResponse<Void> saveTag(@PathVariable String key, @RequestBody Map<String, String> body) {
         Tags t = tagsMapper.selectById(key);
         if (t == null) { t = new Tags(); t.setKey(key); t.setValue(body.get("value")); tagsMapper.insert(t); }
