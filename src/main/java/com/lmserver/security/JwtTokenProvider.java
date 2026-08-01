@@ -13,6 +13,10 @@ import java.util.Date;
  * JWT Token 提供者 — 桥接 JwtUtil 与 Spring Security，启动时校验密钥强度，拒绝弱默认密钥
  */
 
+/**
+ * JWT Token 提供者 — 桥接 JwtUtil 与 Spring Security，启动时校验密钥强度，拒绝弱默认密钥
+ */
+
 @Slf4j
 @Component
 public class JwtTokenProvider {
@@ -38,17 +42,14 @@ public class JwtTokenProvider {
                 jwtConfig.getRefreshTokenExpiration());
         log.info("JWT TokenProvider 初始化完成");
     }
-
     /** 生成 Access Token — 有效期1小时 */
     public String createAccessToken(Long userId, String role, String platform, int tokenVersion) {
         return jwtUtil.createAccessToken(userId, role, platform, tokenVersion);
     }
-
     /** 生成 Refresh Token — 有效期30天 */
     public String createRefreshToken(Long userId, int tokenVersion) {
         return jwtUtil.createRefreshToken(userId, tokenVersion);
     }
-
     /** 从 Token 构建 Authentication — 设置 SecurityContext */
     public Authentication getAuthentication(String token) {
         Long userId = jwtUtil.getUserId(token);
@@ -58,7 +59,6 @@ public class JwtTokenProvider {
         UserPrincipal principal = new UserPrincipal(userId, "user-" + userId, role, platform, tv);
         return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
     }
-
     /** 校验 Token 签名和有效期 */
     public boolean validateToken(String token) { return jwtUtil.isValid(token); }
     /** 校验 Token 签名和有效期 */

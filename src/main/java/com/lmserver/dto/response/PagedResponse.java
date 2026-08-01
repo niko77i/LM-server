@@ -15,6 +15,10 @@ import java.util.List;
  * 分页列表响应 — {items: [...], total, page, size}，字段名 items 匹配前端 res.data.items
  */
 
+/**
+ * 分页列表响应 — {items: [...], total, page, size}，字段名 items 匹配前端 res.data.items
+ */
+
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

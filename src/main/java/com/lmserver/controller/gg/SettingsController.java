@@ -20,6 +20,10 @@ import java.util.Map;
  * 系统设置控制器 — /api/settings/*，批量配置保存+标签管理
  */
 
+/**
+ * 系统设置控制器 — /api/settings/*，批量配置保存+标签管理
+ */
+
 @RestController
 @RequestMapping("/api/settings")
 @RequiredArgsConstructor

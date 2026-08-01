@@ -2,6 +2,10 @@
  * 账户管理服务接口 — 多条件筛选(名称/账号ID/状态/MCC/代理)+软删除
  */
 
+/**
+ * 账户管理服务接口 — 多条件筛选(名称/账号ID/状态/MCC/代理)+软删除
+ */
+
 package com.lmserver.service;
 
 import com.lmserver.dto.response.PagedResponse;

@@ -11,6 +11,10 @@ import org.springframework.web.bind.annotation.*;
  * 掉包检测控制器 — /api/delist/*，查询Google Play应用下架检测结果
  */
 
+/**
+ * 掉包检测控制器 — /api/delist/*，查询Google Play应用下架检测结果
+ */
+
 @RestController
 @RequestMapping("/api/delist")
 @RequiredArgsConstructor

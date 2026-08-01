@@ -2,6 +2,10 @@
  * JWT 核心工具 — HMAC-SHA256 Token 生成/解析/校验/字段提取，纯函数无 Spring 依赖
  */
 
+/**
+ * JWT 核心工具 — HMAC-SHA256 Token 生成/解析/校验/字段提取，纯函数无 Spring 依赖
+ */
+
 package com.lmserver.util;
 
 import io.jsonwebtoken.Claims;
@@ -28,7 +32,6 @@ public class JwtUtil {
         this.accessExpiration = accessExpirationMs;
         this.refreshExpiration = refreshExpirationMs;
     }
-
     /** 生成 Access Token — 有效期1小时 */
     public String createAccessToken(Long userId, String role, String platform, int tokenVersion) {
         Date now = new Date();
@@ -42,7 +45,6 @@ public class JwtUtil {
                 .signWith(signingKey)
                 .compact();
     }
-
     /** 生成 Refresh Token — 有效期30天 */
     public String createRefreshToken(Long userId, int tokenVersion) {
         return Jwts.builder()
@@ -54,7 +56,6 @@ public class JwtUtil {
                 .signWith(signingKey)
                 .compact();
     }
-
     /** 解析 Token Claims — 无效返回 null */
     public Claims parseClaims(String token) {
         try {
@@ -64,55 +65,46 @@ public class JwtUtil {
             return null;
         }
     }
-
     /** 校验 Token 是否有效 — 签名正确且未过期 */
     public boolean isValid(String token) {
         return parseClaims(token) != null;
     }
-
     /** 校验 Token 是否有效 — 签名正确且未过期 */
     public boolean isValid(String token, int currentVersion) {
         Claims claims = parseClaims(token);
         if (claims == null) return false;
         return claims.get("tokenVersion", Integer.class) == currentVersion;
     }
-
     /** 从 Token 提取用户 ID */
     public Long getUserId(String token) {
         Claims c = parseClaims(token);
         return c != null ? Long.parseLong(c.getSubject()) : null;
     }
-
     /** 从 Token 提取角色 */
     public String getRole(String token) {
         Claims c = parseClaims(token);
         return c != null ? c.get("role", String.class) : null;
     }
-
     /** 从 Token 提取平台 */
     public String getPlatform(String token) {
         Claims c = parseClaims(token);
         return c != null ? c.get("platform", String.class) : null;
     }
-
     /** 从 Token 提取版本号 */
     public int getTokenVersion(String token) {
         Claims c = parseClaims(token);
         return c != null ? c.get("tokenVersion", Integer.class) : 0;
     }
-
     /** 从 Token 提取过期时间 */
     public Date getExpiration(String token) {
         Claims c = parseClaims(token);
         return c != null ? c.getExpiration() : null;
     }
-
     /** 判断是否为 Refresh Token */
     public boolean isRefreshToken(String token) {
         Claims c = parseClaims(token);
         return c != null && "refresh".equals(c.get("type", String.class));
     }
-
     /** 获取 Access Token 有效期（毫秒） */
     public long getAccessExpiration() { return accessExpiration; }
 }

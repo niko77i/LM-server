@@ -14,6 +14,10 @@ import java.util.concurrent.ThreadPoolExecutor;
  * 异步线程池配置 — @Async 注解的执行器，核心5线程最大20，队列100
  */
 
+/**
+ * 异步线程池配置 — @Async 注解的执行器，核心5线程最大20，队列100
+ */
+
 @Slf4j
 @Configuration
 @EnableAsync

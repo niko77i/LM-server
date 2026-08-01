@@ -18,6 +18,10 @@ import java.util.List;
  * 图片抓取控制器 — /api/scrape/*，Google Play截图抓取缓存管理
  */
 
+/**
+ * 图片抓取控制器 — /api/scrape/*，Google Play截图抓取缓存管理
+ */
+
 @RestController
 @RequestMapping("/api/scrape")
 @RequiredArgsConstructor

@@ -42,7 +42,6 @@ public class CopywritingServiceImpl implements CopywritingService {
         if (effectiveness != null) c.setEffectiveness(effectiveness);
         mapper.updateById(c); return c;
     }
-
     /** 删除记录 */
     @Override public void delete(Long id) { mapper.deleteById(id); }
     /** 批量删除 — 按 ID 列表批量删除 */

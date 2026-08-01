@@ -19,6 +19,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * Spring Security 安全配置 — JWT 无状态认证 + 路由权限规则 + BCrypt 密码编码器
  */
 
+/**
+ * Spring Security 安全配置 — JWT 无状态认证 + 路由权限规则 + BCrypt 密码编码器
+ */
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor

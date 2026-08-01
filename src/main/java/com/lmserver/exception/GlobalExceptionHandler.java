@@ -14,6 +14,10 @@ import java.util.stream.Collectors;
  * 全局异常处理器 — @RestControllerAdvice，将各类异常统一转换为 ApiResponse.fail() 格式
  */
 
+/**
+ * 全局异常处理器 — @RestControllerAdvice，将各类异常统一转换为 ApiResponse.fail() 格式
+ */
+
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {

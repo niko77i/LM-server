@@ -9,6 +9,10 @@ import java.util.Collection;
  * Spring Security 用户主体 — 从 JWT Claims 中提取 userId/role/platform/tokenVersion，实现 UserDetails 接口
  */
 
+/**
+ * Spring Security 用户主体 — 从 JWT Claims 中提取 userId/role/platform/tokenVersion，实现 UserDetails 接口
+ */
+
 @Getter
 public class UserPrincipal implements UserDetails {
 
@@ -33,7 +37,6 @@ public class UserPrincipal implements UserDetails {
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }
     @Override public boolean isEnabled() { return UserRole.fromValue(role).canLogin(); }
-
     /** 判断是否为 developer 角色 */
     public boolean isDeveloper() { return UserRole.DEVELOPER.name().equalsIgnoreCase(role); }
     /** 判断是否为管理员角色 — developer 也是管理员 */

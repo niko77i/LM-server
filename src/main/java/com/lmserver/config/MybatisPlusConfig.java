@@ -9,6 +9,10 @@ import org.springframework.context.annotation.Configuration;
  * MyBatis-Plus 配置 — 注册分页插件（MySQL 方言），自动处理物理分页
  */
 
+/**
+ * MyBatis-Plus 配置 — 注册分页插件（MySQL 方言），自动处理物理分页
+ */
+
 @Configuration
 public class MybatisPlusConfig {
     @Bean

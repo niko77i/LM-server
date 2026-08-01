@@ -16,6 +16,10 @@ import java.util.Map;
  * GG 广告报告控制器 — /api/ad-reports/*，GG广告投放数据的CRUD
  */
 
+/**
+ * GG 广告报告控制器 — /api/ad-reports/*，GG广告投放数据的CRUD
+ */
+
 @RestController
 @RequestMapping("/api/ad-reports")
 @RequiredArgsConstructor

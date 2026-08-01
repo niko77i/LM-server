@@ -21,6 +21,10 @@ import java.util.Map;
  * 选项管理控制器 — /api/{type}/*，通过路径变量统一分发5个选项表的CRUD
  */
 
+/**
+ * 选项管理控制器 — /api/{type}/*，通过路径变量统一分发5个选项表的CRUD
+ */
+
 @Slf4j
 @RestController
 @RequiredArgsConstructor

@@ -66,7 +66,6 @@ public class OptionServiceImpl implements OptionService {
         }
         return null;
     }
-
     /** 删除记录 */
     @Override public void delete(String type, Long id) {
         switch (type) {

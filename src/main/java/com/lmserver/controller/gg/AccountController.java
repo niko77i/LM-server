@@ -14,6 +14,10 @@ import java.util.Map;
  * 账户管理控制器 — /api/accounts/*，GG平台广告账户的CRUD+软删除+下拉选项
  */
 
+/**
+ * 账户管理控制器 — /api/accounts/*，GG平台广告账户的CRUD+软删除+下拉选项
+ */
+
 @RestController
 @RequestMapping("/api/accounts")
 @RequiredArgsConstructor

@@ -33,7 +33,6 @@ public class AccountServiceImpl implements AccountService {
         var pg = accountsMapper.selectPage(new Page<>(page, size), qw);
         return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
     }
-
     /** 按 ID 查询 — 返回单条记录 */
     @Override public Accounts getById(Long id) { return accountsMapper.selectById(id); }
 
@@ -57,13 +56,11 @@ public class AccountServiceImpl implements AccountService {
         if (tz != null) a.setTimezone(tz);
         a.setUpdatedAt(LocalDateTime.now()); accountsMapper.updateById(a); return a;
     }
-
     /** 删除记录 */
     @Override public void delete(Long id) {
         Accounts a = accountsMapper.selectById(id);
         if (a != null) { a.setDeletedAt(LocalDateTime.now()); accountsMapper.updateById(a); }
     }
-
     /** 获取下拉选项 — 返回 id + name 的简略列表 */
     @Override public List<Accounts> options(Long ownerId) {
         return accountsMapper.selectList(new LambdaQueryWrapper<Accounts>().eq(Accounts::getOwnerId, ownerId));

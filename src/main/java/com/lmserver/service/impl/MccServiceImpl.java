@@ -30,7 +30,6 @@ public class MccServiceImpl implements MccService {
         var pg = mccMapper.selectPage(new Page<>(page, size), qw);
         return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
     }
-
     /** 按 ID 查询 — 返回单条记录 */
     @Override public Mcc getById(Long id) { return mccMapper.selectById(id); }
 
@@ -52,10 +51,8 @@ public class MccServiceImpl implements MccService {
         if (parentMccId != null) m.setParentMccId(parentMccId);
         m.setUpdatedAt(LocalDateTime.now()); mccMapper.updateById(m); return m;
     }
-
     /** 删除记录 */
     @Override public void delete(Long id) { mccMapper.deleteById(id); }
-
     /** 获取下拉选项 — 返回 id + name 的简略列表 */
     @Override public List<Mcc> options(Long ownerId) {
         return mccMapper.selectList(new LambdaQueryWrapper<Mcc>().eq(Mcc::getOwnerId, ownerId));

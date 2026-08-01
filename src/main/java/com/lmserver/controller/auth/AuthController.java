@@ -15,6 +15,10 @@ import org.springframework.web.bind.annotation.*;
  * 认证控制器 — /api/auth/*，处理登录/注册/Token刷新/个人信息，login和register公开访问
  */
 
+/**
+ * 认证控制器 — /api/auth/*，处理登录/注册/Token刷新/个人信息，login和register公开访问
+ */
+
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")

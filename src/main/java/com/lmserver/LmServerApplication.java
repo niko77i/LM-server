@@ -7,6 +7,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * Spring Boot 启动类 — 应用入口，@SpringBootApplication
  */
 
+/**
+ * Spring Boot 启动类 — 应用入口，@SpringBootApplication
+ */
+
 @SpringBootApplication
 public class LmServerApplication {
 

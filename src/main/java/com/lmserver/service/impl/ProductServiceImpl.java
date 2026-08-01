@@ -30,7 +30,6 @@ public class ProductServiceImpl implements ProductService {
         var pg = productsMapper.selectPage(new Page<>(page, size), qw);
         return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
     }
-
     /** 按 ID 查询 — 返回单条记录 */
     @Override public Products getById(Long id) { return productsMapper.selectById(id); }
 
@@ -60,10 +59,8 @@ public class ProductServiceImpl implements ProductService {
         if (ratio != null) p.setAgencyRatio(ratio);
         productsMapper.updateById(p); return p;
     }
-
     /** 删除记录 */
     @Override public void delete(Long id) { productsMapper.deleteById(id); }
-
     /** 获取下拉选项 — 返回 id + name 的简略列表 */
     @Override public List<Products> options(Long ownerId) {
         return productsMapper.selectList(new LambdaQueryWrapper<Products>().eq(Products::getOwnerId, ownerId));

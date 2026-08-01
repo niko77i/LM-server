@@ -46,7 +46,6 @@ public class RechargeServiceImpl implements RechargeService {
         if (operator != null) r.setOperator(operator);
         mapper.updateById(r); return r;
     }
-
     /** 删除记录 */
     @Override public void delete(Long id) { mapper.deleteById(id); }
 }

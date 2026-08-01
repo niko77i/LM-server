@@ -7,6 +7,10 @@ import lombok.Data;
  * 注册请求 — username(4-20字符) + password(最少6字符) + displayName
  */
 
+/**
+ * 注册请求 — username(4-20字符) + password(最少6字符) + displayName
+ */
+
 @Data
 public class RegisterRequest {
 
