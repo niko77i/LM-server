@@ -9,6 +9,7 @@ import com.lmserver.mapper.common.AuditLogMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+/** REST Controller [/api/audit-log] */
 @RestController
 @RequestMapping("/api/audit-log")
 @RequiredArgsConstructor

@@ -3,6 +3,7 @@ package com.lmserver.exception;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
+/** Exception class */
 @Getter
 public class BusinessException extends RuntimeException {
 

@@ -3,6 +3,7 @@ package com.lmserver.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+/** Data Transfer Object */
 @Data
 public class LoginRequest {
 

@@ -4,6 +4,7 @@ import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.gg.Accounts;
 import java.util.List;
 
+/** Service interface */
 public interface AccountService {
     PagedResponse<Accounts> list(Long ownerId, int page, int size, String search, Long statusId, Long mccId, Long agentId);
     Accounts getById(Long id);

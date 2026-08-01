@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+/** REST Controller [/api/fb/reports] */
 @RestController
 @RequestMapping("/api/fb/reports")
 @RequiredArgsConstructor

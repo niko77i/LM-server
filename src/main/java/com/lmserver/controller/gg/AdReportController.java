@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/** REST Controller [/api/ad-reports] */
 @RestController
 @RequestMapping("/api/ad-reports")
 @RequiredArgsConstructor

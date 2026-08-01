@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/** Entity mapped to table: fbaccounts */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

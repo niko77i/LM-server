@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/** Data Transfer Object */
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PRIVATE)

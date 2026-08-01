@@ -3,6 +3,7 @@ package com.lmserver.enums;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import java.util.List;
 
+/** Enumeration */
 public enum UserRole {
     DEVELOPER("developer"),
     ADMIN("admin"),

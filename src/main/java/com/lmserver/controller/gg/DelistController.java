@@ -8,6 +8,7 @@ import com.lmserver.mapper.gg.DelistChecksMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+/** REST Controller [/api/delist] */
 @RestController
 @RequestMapping("/api/delist")
 @RequiredArgsConstructor

@@ -4,6 +4,7 @@ import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.gg.Products;
 import java.util.List;
 
+/** Service interface */
 public interface ProductService {
     PagedResponse<Products> list(Long ownerId, int page, int size, String search, String region, String status);
     Products getById(Long id);

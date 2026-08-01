@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/** Entity mapped to table: config */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

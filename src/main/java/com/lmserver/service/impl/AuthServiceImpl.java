@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
+/** Service interface */
 @Slf4j
 @Service
 @RequiredArgsConstructor

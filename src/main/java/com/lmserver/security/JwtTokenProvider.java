@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Date;
 
+/** JWT token provider - create/validate tokens */
 @Slf4j
 @Component
 public class JwtTokenProvider {

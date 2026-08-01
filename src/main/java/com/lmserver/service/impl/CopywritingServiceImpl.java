@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.util.List;
 
+/** Service interface */
 @Service
 @RequiredArgsConstructor
 public class CopywritingServiceImpl implements CopywritingService {

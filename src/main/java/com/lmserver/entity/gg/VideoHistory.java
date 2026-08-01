@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/** Entity mapped to table: videohistory */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -5,6 +5,7 @@ import com.lmserver.entity.fb.*;
 
 import java.util.List;
 
+/** Service interface */
 public interface FbService {
     // BM
     PagedResponse<FbBms> listBms(Long ownerId, int page, int size, String search, String status);

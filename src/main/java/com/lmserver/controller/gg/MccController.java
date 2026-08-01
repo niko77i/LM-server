@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/** REST Controller [/api/mcc] */
 @RestController
 @RequestMapping("/api/mcc")
 @RequiredArgsConstructor

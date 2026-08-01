@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.lmserver.entity.gg.Packages;
 import org.apache.ibatis.annotations.Mapper;
 
+/** MyBatis-Plus Mapper */
 @Mapper
 public interface PackagesMapper extends BaseMapper<Packages> {
 }

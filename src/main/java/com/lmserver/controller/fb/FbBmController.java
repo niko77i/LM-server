@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/** REST Controller [/api/fb/bms] */
 @RestController
 @RequestMapping("/api/fb/bms")
 @RequiredArgsConstructor

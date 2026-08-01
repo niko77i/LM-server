@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.Set;
 
+/** Security filter - JWT authentication */
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

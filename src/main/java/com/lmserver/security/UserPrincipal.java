@@ -6,6 +6,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 
+/** Spring Security user principal from JWT */
 @Getter
 public class UserPrincipal implements UserDetails {
 
