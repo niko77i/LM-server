@@ -1,6 +1,7 @@
 package com.lmserver.entity.gg;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,27 +10,25 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "product_assets")
+@TableName("product_assets")
 public class ProductAssets {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+        
     private Long id;
 
-    @Column(name = "product_id")
+    @TableField("product_id")
     private Long productId;
 
-    @Column(name = "video_id")
+    @TableField("video_id")
     private String videoId;
 
-    @Column(name = "video_owner_id")
+    @TableField("video_owner_id")
     private Long videoOwnerId;
 
-    @Column(name = "added_by")
+    @TableField("added_by")
     private Long addedBy;
 
-    @Column(name = "added_at")
+    @TableField("added_at")
     private LocalDateTime addedAt;
 
 }

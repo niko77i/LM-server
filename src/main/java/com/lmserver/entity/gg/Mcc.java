@@ -1,6 +1,7 @@
 package com.lmserver.entity.gg;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,35 +10,33 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "mcc")
+@TableName("mcc")
 public class Mcc {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+        
     private Long id;
 
     private String name;
 
-    @Column(name = "mcc_id")
+    @TableField("mcc_id")
     private String mccId;
 
-    @Column(name = "parent_mcc_id")
+    @TableField("parent_mcc_id")
     private Long parentMccId;
 
-    @Column(name = "created_at")
+    @TableField("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @TableField("updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "owner_id")
+    @TableField("owner_id")
     private Long ownerId;
 
-    @Column(name = "shared_user_ids")
+    @TableField("shared_user_ids")
     private String sharedUserIds;
 
-    @Column(name = "level_id")
+    @TableField("level_id")
     private Long levelId;
 
 }

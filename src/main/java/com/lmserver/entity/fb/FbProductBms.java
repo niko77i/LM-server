@@ -1,6 +1,6 @@
 package com.lmserver.entity.fb;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,18 +8,16 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "fb_product_bms")
+@TableName("fb_product_bms")
 public class FbProductBms {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+        
     private Long id;
 
-    @Column(name = "product_id")
+    @TableField("product_id")
     private Long productId;
 
-    @Column(name = "bm_id")
+    @TableField("bm_id")
     private Long bmId;
 
 }

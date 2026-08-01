@@ -1,6 +1,7 @@
 package com.lmserver.entity.gg;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,15 +10,13 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "products")
+@TableName("products")
 public class Products {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+        
     private Long id;
 
-    @Column(name = "product_name")
+    @TableField("product_name")
     private String productName;
 
     private String kpi;
@@ -26,33 +25,33 @@ public class Products {
 
     private String status;
 
-    @Column(name = "mcc_id")
+    @TableField("mcc_id")
     private Long mccId;
 
-    @Column(name = "created_at")
+    @TableField("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "owner_id")
+    @TableField("owner_id")
     private Long ownerId;
 
-    @Column(name = "runner_ids")
+    @TableField("runner_ids")
     private String runnerIds;
 
-    @Column(name = "is_archived")
+    @TableField("is_archived")
     private Long isArchived;
 
     private String customer;
 
-    @Column(name = "deleted_at")
+    @TableField("deleted_at")
     private LocalDateTime deletedAt;
 
-    @Column(name = "agency_ratio")
+    @TableField("agency_ratio")
     private Double agencyRatio;
 
-    @Column(name = "sales_person_id")
+    @TableField("sales_person_id")
     private Long salesPersonId;
 
-    @Column(name = "sales_person")
+    @TableField("sales_person")
     private String salesPerson;
 
 }

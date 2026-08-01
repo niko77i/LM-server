@@ -1,6 +1,6 @@
 package com.lmserver.entity.common;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,12 +8,10 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "tags")
+@TableName("tags")
 public class Tags {
 
-    @Id
-    private String key;
+        private String key;
 
     private String value;
 

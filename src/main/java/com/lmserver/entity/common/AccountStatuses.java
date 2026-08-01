@@ -1,6 +1,7 @@
 package com.lmserver.entity.common;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,22 +10,20 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "account_statuses")
+@TableName("account_statuses")
 public class AccountStatuses {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+        
     private Long id;
 
     private String name;
 
-    @Column(name = "owner_id")
+    @TableField("owner_id")
     private Long ownerId;
 
     private String platform;
 
-    @Column(name = "created_at")
+    @TableField("created_at")
     private LocalDateTime createdAt;
 
 }

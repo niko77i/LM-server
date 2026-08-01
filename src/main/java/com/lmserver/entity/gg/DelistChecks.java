@@ -1,6 +1,7 @@
 package com.lmserver.entity.gg;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,27 +10,25 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "delist_checks")
+@TableName("delist_checks")
 public class DelistChecks {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+        
     private Long id;
 
-    @Column(name = "package_id")
+    @TableField("package_id")
     private Long packageId;
 
-    @Column(name = "product_id")
+    @TableField("product_id")
     private Long productId;
 
-    @Column(name = "is_delisted")
+    @TableField("is_delisted")
     private Long isDelisted;
 
-    @Column(name = "checked_at")
+    @TableField("checked_at")
     private LocalDateTime checkedAt;
 
-    @Column(name = "error_msg")
+    @TableField("error_msg")
     private String errorMsg;
 
 }

@@ -1,6 +1,7 @@
 package com.lmserver.entity.gg;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,16 +10,12 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@IdClass(VideosId.class)
-@Table(name = "videos")
+@TableName("videos")
 public class Videos {
 
-    @Id
-    private String id;
+        private String id;
 
-    @Id
-    @Column(name = "owner_id")
+        @TableField("owner_id")
     private Long ownerId;
 
     private String url;
@@ -27,23 +24,23 @@ public class Videos {
 
     private String region;
 
-    @Column(name = "frame_type")
+    @TableField("frame_type")
     private String frameType;
 
     private String effectiveness;
 
-    @Column(name = "product_name")
+    @TableField("product_name")
     private String productName;
 
-    @Column(name = "review_status")
+    @TableField("review_status")
     private String reviewStatus;
 
-    @Column(name = "is_public")
+    @TableField("is_public")
     private Boolean isPublic;
 
-    @Column(name = "imported_at")
+    @TableField("imported_at")
     private LocalDateTime importedAt;
 
-    @Column(name = "channel_name")
+    @TableField("channel_name")
     private String channelName;
 }

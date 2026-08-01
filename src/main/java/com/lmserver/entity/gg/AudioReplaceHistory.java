@@ -1,6 +1,7 @@
 package com.lmserver.entity.gg;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,30 +10,28 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "audio_replace_history")
+@TableName("audio_replace_history")
 public class AudioReplaceHistory {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+        
     private Long id;
 
-    @Column(name = "video_name")
+    @TableField("video_name")
     private String videoName;
 
-    @Column(name = "audio_name")
+    @TableField("audio_name")
     private String audioName;
 
-    @Column(name = "output_name")
+    @TableField("output_name")
     private String outputName;
 
-    @Column(name = "output_path")
+    @TableField("output_path")
     private String outputPath;
 
-    @Column(name = "size_mb")
+    @TableField("size_mb")
     private Double sizeMb;
 
-    @Column(name = "created_at")
+    @TableField("created_at")
     private LocalDateTime createdAt;
 
 }

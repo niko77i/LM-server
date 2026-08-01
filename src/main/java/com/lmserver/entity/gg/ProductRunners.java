@@ -1,6 +1,6 @@
 package com.lmserver.entity.gg;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,16 +8,12 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@IdClass(ProductRunnersId.class)
-@Table(name = "product_runners")
+@TableName("product_runners")
 public class ProductRunners {
 
-    @Id
-    @Column(name = "product_id")
+    @TableField("product_id")
     private Long productId;
 
-    @Id
-    @Column(name = "user_id")
+    @TableField("user_id")
     private Long userId;
 }

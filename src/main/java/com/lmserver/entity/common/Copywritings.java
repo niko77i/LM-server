@@ -1,6 +1,7 @@
 package com.lmserver.entity.common;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,27 +10,25 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "copywritings")
+@TableName("copywritings")
 public class Copywritings {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+        
     private Long id;
 
     private String region;
 
     private String content;
 
-    @Column(name = "created_at")
+    @TableField("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "owner_id")
+    @TableField("owner_id")
     private Long ownerId;
 
     private String effectiveness;
 
-    @Column(name = "is_public")
+    @TableField("is_public")
     private Long isPublic;
 
 }
