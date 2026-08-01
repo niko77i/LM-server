@@ -31,8 +31,9 @@ public class AuthServiceImpl implements AuthService {
         if (user == null || !passwordEncoder.matches(password, user.getPassword())) return null;
         if (!UserRole.fromValue(user.getRole()).canLogin()) return null;
 
-        String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole(), user.getPlatform(), 0);
-        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId(), 0);
+        int tv = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
+        String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole(), user.getPlatform(), tv);
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId(), tv);
 
         user.setLastLogin(LocalDateTime.now());
         usersMapper.updateById(user);
@@ -58,13 +59,18 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    /** 刷新 Access Token — 验证 Refresh Token 后签发新 Token */
     public String refreshToken(String refreshToken) {
         if (!jwtTokenProvider.validateToken(refreshToken) || !jwtTokenProvider.isRefreshToken(refreshToken))
             return null;
         Users u = usersMapper.selectById(jwtTokenProvider.getUserId(refreshToken));
         if (u == null) return null;
-        return jwtTokenProvider.createAccessToken(u.getId(), u.getRole(), u.getPlatform(), 0);
+
+        // Refresh Token 轮换：递增 tokenVersion 使旧 Token 失效
+        int newVersion = u.getTokenVersion() != null ? u.getTokenVersion() + 1 : 1;
+        u.setTokenVersion(newVersion);
+        usersMapper.updateById(u);
+
+        return jwtTokenProvider.createAccessToken(u.getId(), u.getRole(), u.getPlatform(), newVersion);
     }
 
     @Override

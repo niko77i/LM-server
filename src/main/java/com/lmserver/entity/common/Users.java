@@ -45,4 +45,8 @@ public class Users {
 
     private String platform;
 
+    /** JWT Token 版本号 — 改密/禁用时递增，强制旧 Token 失效 */
+    @TableField("token_version")
+    private Integer tokenVersion;
+
 }
