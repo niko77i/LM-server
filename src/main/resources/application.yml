@@ -43,10 +43,46 @@ mybatis-plus:
       max-file-size: 500MB
       max-request-size: 500MB
 
+  # SMTP 邮件（QQ邮箱）
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: 2350574164@qq.com
+    password: vassdzilljbpdibe
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+
+# JWT 配置
 jwt:
   secret: ${JWT_SECRET:Z2ctc2VydmVyLWp3dC1zZWNyZXQtMjAyNi1jaGFuZ2UtaW4tcHJvZHVjdGlvbg==}
   access-token-expiration: 3600000
   refresh-token-expiration: 2592000000
+
+# 通知配置
+notification:
+  telegram:
+    bot-token: 8705623419:AAHTV7MUQ9xlYe2FGzwgJFJI6AI_afeu07Y
+    chat-id: "-5220122275"
+
+# Google Sheets
+google:
+  sheets:
+    credentials-path: src/main/resources/fit-boulevard-503111-u4-812bc02c2000.json
+
+# AI 视频生成
+ai:
+  atlas:
+    endpoint: https://api.atlascloud.ai/v1
+    default-model: seedance-2.0
+  veo:
+    endpoint: https://api.google.com/veo/v1
+    model: veo-3.1-lite-i2v
+  doubao:
+    endpoint: https://ark.cn-beijing.volces.com/api/v3
 
 logging:
   level:
