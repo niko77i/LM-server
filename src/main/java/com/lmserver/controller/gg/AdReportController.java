@@ -12,8 +12,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+/**
+ * GG 广告报告控制器 — /api/ad-reports/*，GG广告投放数据的CRUD
+ */
 
-/** REST Controller [/api/ad-reports] */
 @RestController
 @RequestMapping("/api/ad-reports")
 @RequiredArgsConstructor
@@ -22,6 +24,7 @@ public class AdReportController {
     private final AdReportsMapper mapper;
 
     @GetMapping("/list")
+    /** 分页列表查询 — 支持多条件筛选 */
     public PagedResponse<AdReports> list(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String productName, @RequestParam(required = false) String region,
@@ -36,6 +39,7 @@ public class AdReportController {
     }
 
     @PostMapping("/create")
+    /** 新增记录 — 返回创建后的完整对象 */
     public ApiResponse<AdReports> create(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody AdReports report) {
         report.setUserId(principal.getUserId());
@@ -44,11 +48,13 @@ public class AdReportController {
     }
 
     @PutMapping("/{id}")
+    /** 更新记录 — 部分字段更新，只改传入的非 null 字段 */
     public ApiResponse<AdReports> update(@PathVariable Long id, @RequestBody AdReports report) {
         report.setId(id); mapper.updateById(report);
         return ApiResponse.ok(mapper.selectById(id));
     }
 
     @DeleteMapping("/{id}")
+    /** 删除记录 */
     public ApiResponse<Void> delete(@PathVariable Long id) { mapper.deleteById(id); return ApiResponse.ok(); }
 }

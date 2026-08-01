@@ -11,8 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-
-/** Service interface */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -21,6 +19,7 @@ public class RechargeServiceImpl implements RechargeService {
     private final RechargeRecordsMapper mapper;
 
     @Override
+    /** 分页列表查询 — 支持多条件筛选 */
     public PagedResponse<RechargeRecords> list(Long userId, int page, int size, String accountId) {
         var qw = new LambdaQueryWrapper<RechargeRecords>().eq(RechargeRecords::getCreatedBy, userId);
         if (accountId != null && !accountId.isBlank()) qw.eq(RechargeRecords::getAccountId, accountId);
@@ -30,6 +29,7 @@ public class RechargeServiceImpl implements RechargeService {
     }
 
     @Override
+    /** 新增记录 — 返回创建后的完整对象 */
     public RechargeRecords create(Long userId, String accountId, String amount, String operator, String status, Long agentId) {
         RechargeRecords r = new RechargeRecords(); r.setAccountId(accountId); r.setAmount(amount);
         r.setCreatedBy(userId); r.setOperator(operator != null ? operator : "");
@@ -38,6 +38,7 @@ public class RechargeServiceImpl implements RechargeService {
     }
 
     @Override
+    /** 更新记录 — 部分字段更新，只改传入的非 null 字段 */
     public RechargeRecords update(Long id, String amount, String status, String operator) {
         RechargeRecords r = mapper.selectById(id); if (r == null) return null;
         if (amount != null) r.setAmount(amount);
@@ -46,5 +47,6 @@ public class RechargeServiceImpl implements RechargeService {
         mapper.updateById(r); return r;
     }
 
+    /** 删除记录 */
     @Override public void delete(Long id) { mapper.deleteById(id); }
 }

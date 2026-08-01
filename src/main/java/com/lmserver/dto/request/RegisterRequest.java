@@ -3,8 +3,10 @@ package com.lmserver.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+/**
+ * 注册请求 — username(4-20字符) + password(最少6字符) + displayName
+ */
 
-/** Data Transfer Object */
 @Data
 public class RegisterRequest {
 

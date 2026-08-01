@@ -8,6 +8,10 @@ import lombok.Getter;
 /**
  * 统一 API 响应格式，与 Python helpers.ok() 兼容。
  */
+/**
+ * 统一 API 响应 — {success: bool, data: T, error: string}，与 Python helpers.ok() 兼容
+ */
+
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)

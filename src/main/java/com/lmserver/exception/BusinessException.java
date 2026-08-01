@@ -2,8 +2,10 @@ package com.lmserver.exception;
 
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
+/**
+ * 业务异常基类 — 携带 HTTP 状态码和可选错误码，由 GlobalExceptionHandler 统一转换为 ApiResponse
+ */
 
-/** Exception class */
 @Getter
 public class BusinessException extends RuntimeException {
 

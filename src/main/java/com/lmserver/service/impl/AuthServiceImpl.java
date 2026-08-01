@@ -14,8 +14,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-
-/** Service interface */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -26,6 +24,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
+    /** 用户登录 — 验证用户名密码，成功返回 JWT Token 和用户信息 */
     public LoginResponse login(String username, String password) {
         Users user = usersMapper.selectOne(
                 new LambdaQueryWrapper<Users>().eq(Users::getUsername, username));
@@ -44,6 +43,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    /** 用户注册 — 创建新账户，默认角色 user，平台 gg */
     public UserInfo register(String username, String password, String displayName) {
         if (usersMapper.selectOne(new LambdaQueryWrapper<Users>().eq(Users::getUsername, username)) != null)
             return null;
@@ -58,6 +58,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    /** 刷新 Access Token — 验证 Refresh Token 后签发新 Token */
     public String refreshToken(String refreshToken) {
         if (!jwtTokenProvider.validateToken(refreshToken) || !jwtTokenProvider.isRefreshToken(refreshToken))
             return null;
@@ -67,6 +68,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    /** 获取当前登录用户 — 从数据库查询完整用户信息 */
     public UserInfo getCurrentUser(Long userId) {
         Users u = usersMapper.selectById(userId);
         return u != null ? toUserInfo(u) : null;

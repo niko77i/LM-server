@@ -11,8 +11,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+/**
+ * 认证控制器 — /api/auth/*，处理登录/注册/Token刷新/个人信息，login和register公开访问
+ */
 
-/** REST Controller [/api/auth] */
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
@@ -22,6 +24,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
+    /** 用户登录 — 验证用户名密码，成功返回 JWT Token 和用户信息 */
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest req) {
         LoginResponse result = authService.login(req.getUsername(), req.getPassword());
         if (result == null) {
@@ -31,6 +34,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    /** 用户注册 — 创建新账户，默认角色 user，平台 gg */
     public ApiResponse<LoginResponse.UserInfo> register(@Valid @RequestBody RegisterRequest req) {
         LoginResponse.UserInfo user = authService.register(
                 req.getUsername(), req.getPassword(), req.getDisplayName());
@@ -41,6 +45,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
+    /** 刷新 Token — 用 Refresh Token 换取新的 Access Token */
     public ApiResponse<String> refresh(@RequestHeader("Authorization") String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return ApiResponse.fail("缺少 Refresh Token");
@@ -53,6 +58,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
+    /** 获取当前用户信息 — 从 JWT 解析用户 ID 后查询数据库 */
     public ApiResponse<LoginResponse.UserInfo> me(@AuthenticationPrincipal UserPrincipal principal) {
         if (principal == null) return ApiResponse.fail("未认证");
         LoginResponse.UserInfo user = authService.getCurrentUser(principal.getUserId());

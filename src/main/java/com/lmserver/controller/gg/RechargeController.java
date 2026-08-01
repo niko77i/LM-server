@@ -10,8 +10,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+/**
+ * 充值管理控制器 — /api/recharge/*，GG平台充值记录的CRUD
+ */
 
-/** REST Controller [/api/recharge] */
 @RestController
 @RequestMapping("/api/recharge")
 @RequiredArgsConstructor
@@ -20,6 +22,7 @@ public class RechargeController {
     private final RechargeService rechargeService;
 
     @GetMapping("/list")
+    /** 分页列表查询 — 支持多条件筛选 */
     public PagedResponse<RechargeRecords> list(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page,
@@ -29,6 +32,7 @@ public class RechargeController {
     }
 
     @PostMapping("/create")
+    /** 新增记录 — 返回创建后的完整对象 */
     public ApiResponse<RechargeRecords> create(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, Object> body) {
         String accountId = (String) body.get("account_id");
@@ -39,6 +43,7 @@ public class RechargeController {
     }
 
     @PutMapping("/{id}")
+    /** 更新记录 — 部分字段更新，只改传入的非 null 字段 */
     public ApiResponse<RechargeRecords> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         RechargeRecords r = rechargeService.update(id, (String) body.get("amount"),
                 (String) body.get("status"), (String) body.get("operator"));
@@ -46,6 +51,7 @@ public class RechargeController {
     }
 
     @DeleteMapping("/{id}")
+    /** 删除记录 */
     public ApiResponse<Void> delete(@PathVariable Long id) {
         rechargeService.delete(id);
         return ApiResponse.ok();

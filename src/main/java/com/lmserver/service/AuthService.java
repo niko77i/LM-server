@@ -1,3 +1,7 @@
+/**
+ * 认证服务接口 — 登录/注册/Token刷新/获取当前用户
+ */
+
 package com.lmserver.service;
 
 import com.lmserver.dto.response.LoginResponse;

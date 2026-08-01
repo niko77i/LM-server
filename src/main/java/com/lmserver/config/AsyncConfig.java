@@ -10,8 +10,10 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
+/**
+ * 异步线程池配置 — @Async 注解的执行器，核心5线程最大20，队列100
+ */
 
-/** Spring configuration */
 @Slf4j
 @Configuration
 @EnableAsync
@@ -19,6 +21,7 @@ public class AsyncConfig implements AsyncConfigurer {
 
     @Override
     @Bean("ggAsyncExecutor")
+    /** 异步线程池 — core=5, max=20, queue=100 */
     public Executor getAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(5);
@@ -31,6 +34,7 @@ public class AsyncConfig implements AsyncConfigurer {
     }
 
     @Override
+    /** 异步异常处理器 — 记录日志 */
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
         return (ex, method, params) ->
                 log.error("Async method {} failed", method.getName(), ex);

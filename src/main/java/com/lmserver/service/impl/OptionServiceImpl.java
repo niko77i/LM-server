@@ -9,8 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-
-/** Service interface */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -69,6 +67,7 @@ public class OptionServiceImpl implements OptionService {
         return null;
     }
 
+    /** 删除记录 */
     @Override public void delete(String type, Long id) {
         switch (type) {
             case "agents" -> agentsMapper.deleteById(id);

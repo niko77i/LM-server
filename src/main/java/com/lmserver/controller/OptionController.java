@@ -17,6 +17,10 @@ import java.util.Map;
  * <p>
  * 通过路径变量 {type} 区分不同选项类型，避免 5 个 Controller 重复代码。
  */
+/**
+ * 选项管理控制器 — /api/{type}/*，通过路径变量统一分发5个选项表的CRUD
+ */
+
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -25,9 +29,8 @@ public class OptionController {
     private final OptionService optionService;
     private static final java.util.Set<String> VALID_TYPES = java.util.Set.of(
             "agents", "statuses", "mcc-levels", "sales-persons", "regions");
-
-    /** GET /api/{type}/list — 列表（按 owner_id 隔离，分页） */
     @GetMapping("/api/{type}/list")
+    /** 分页列表查询 — 支持多条件筛选 */
     public PagedResponse<?> list(@PathVariable String type,
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page,
@@ -40,9 +43,8 @@ public class OptionController {
         List<?> items = from < total ? all.subList(from, to) : List.of();
         return PagedResponse.of(items, total, page, size);
     }
-
-    /** POST /api/{type}/create — 新增 */
     @PostMapping("/api/{type}/create")
+    /** 新增记录 — 返回创建后的完整对象 */
     public ApiResponse<?> create(@PathVariable String type,
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, String> body) {
@@ -53,9 +55,8 @@ public class OptionController {
         Object result = optionService.create(type, name, principal.getUserId(), principal.getPlatform());
         return ApiResponse.ok(result);
     }
-
-    /** PUT /api/{type}/{id} — 更新 */
     @PutMapping("/api/{type}/{id}")
+    /** 更新记录 — 部分字段更新，只改传入的非 null 字段 */
     public ApiResponse<?> update(@PathVariable String type, @PathVariable Long id,
             @RequestBody Map<String, String> body) {
         validate(type);
@@ -64,9 +65,8 @@ public class OptionController {
         Object result = optionService.update(type, id, name);
         return result != null ? ApiResponse.ok(result) : ApiResponse.fail("记录不存在");
     }
-
-    /** DELETE /api/{type}/{id} — 删除 */
     @DeleteMapping("/api/{type}/{id}")
+    /** 删除记录 */
     public ApiResponse<Void> delete(@PathVariable String type, @PathVariable Long id) {
         validate(type);
         optionService.delete(type, id);

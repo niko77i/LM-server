@@ -15,8 +15,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Date;
 import java.util.Set;
+/**
+ * JWT 认证过滤器 — 从 Authorization 头提取 Bearer Token，校验后设置 SecurityContext，剩余有效期不足30%时自动续签
+ */
 
-/** Security filter - JWT authentication */
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

@@ -2,8 +2,10 @@ package com.lmserver.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+/**
+ * 登录请求 — @NotBlank 校验的 username + password
+ */
 
-/** Data Transfer Object */
 @Data
 public class LoginRequest {
 

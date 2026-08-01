@@ -1,11 +1,13 @@
+/**
+ * FB 平台服务接口 — 统一管理 BM/账户/产品 三个子模块
+ */
+
 package com.lmserver.service;
 
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.fb.*;
 
 import java.util.List;
-
-/** Service interface */
 public interface FbService {
     // BM
     PagedResponse<FbBms> listBms(Long ownerId, int page, int size, String search, String status);

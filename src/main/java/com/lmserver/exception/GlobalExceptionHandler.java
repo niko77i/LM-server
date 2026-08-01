@@ -10,25 +10,30 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
+/**
+ * 全局异常处理器 — @RestControllerAdvice，将各类异常统一转换为 ApiResponse.fail() 格式
+ */
 
-/** Exception class */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
+    /** 处理业务异常 — 按异常的 HTTP 状态码返回 */
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
         log.warn("[业务异常] {} - {}", ex.getStatus().value(), ex.getMessage());
         return ResponseEntity.status(ex.getStatus()).body(ApiResponse.fail(ex.getMessage()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
+    /** 处理权限不足 — 返回 403 */
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
         log.warn("[权限不足] {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("权限不足"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
+    /** 处理参数校验失败 — 聚合字段错误信息返回 400 */
     public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex) {
         String msg = ex.getBindingResult().getFieldErrors().stream()
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
@@ -38,6 +43,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
+    /** 处理未知异常 — 返回 500 服务器内部错误 */
     public ResponseEntity<ApiResponse<Void>> handleUnknown(Exception ex) {
         log.error("[系统错误]", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -1,10 +1,12 @@
+/**
+ * 账户管理服务接口 — 多条件筛选(名称/账号ID/状态/MCC/代理)+软删除
+ */
+
 package com.lmserver.service;
 
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.gg.Accounts;
 import java.util.List;
-
-/** Service interface */
 public interface AccountService {
     PagedResponse<Accounts> list(Long ownerId, int page, int size, String search, Long statusId, Long mccId, Long agentId);
     Accounts getById(Long id);

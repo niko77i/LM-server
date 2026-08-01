@@ -3,8 +3,10 @@ package com.lmserver.config;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+/**
+ * JWT 配置属性 — 绑定 application.yml 中 jwt.* 到 Java 对象
+ */
 
-/** Spring configuration */
 @Data
 @Configuration
 @ConfigurationProperties(prefix = "jwt")

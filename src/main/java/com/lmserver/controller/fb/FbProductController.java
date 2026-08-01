@@ -10,8 +10,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+/**
+ * FB 产品管理控制器 — /api/fb/products/*，FB产品的CRUD+下拉选项
+ */
 
-/** REST Controller [/api/fb/products] */
 @RestController
 @RequestMapping("/api/fb/products")
 @RequiredArgsConstructor
@@ -20,6 +22,7 @@ public class FbProductController {
     private final FbService fbService;
 
     @GetMapping("/list")
+    /** 分页列表查询 — 支持多条件筛选 */
     public PagedResponse<FbProducts> list(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -29,12 +32,14 @@ public class FbProductController {
     }
 
     @GetMapping("/{id}")
+    /** 获取单条记录详情 — 按主键 ID 查询 */
     public ApiResponse<FbProducts> detail(@PathVariable Long id) {
         FbProducts p = fbService.getProductById(id);
         return p != null ? ApiResponse.ok(p) : ApiResponse.fail("产品不存在");
     }
 
     @PostMapping("/create")
+    /** 新增记录 — 返回创建后的完整对象 */
     public ApiResponse<FbProducts> create(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, Object> body) {
         String name = (String) body.get("product_name");
@@ -46,6 +51,7 @@ public class FbProductController {
     }
 
     @PutMapping("/{id}")
+    /** 更新记录 — 部分字段更新，只改传入的非 null 字段 */
     public ApiResponse<FbProducts> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         Long spId = body.get("sales_person_id") != null ? Long.valueOf(body.get("sales_person_id").toString()) : null;
         Double ratio = body.get("agency_ratio") != null ? Double.valueOf(body.get("agency_ratio").toString()) : null;
@@ -55,9 +61,11 @@ public class FbProductController {
     }
 
     @DeleteMapping("/{id}")
+    /** 删除记录 */
     public ApiResponse<Void> delete(@PathVariable Long id) { fbService.deleteProduct(id); return ApiResponse.ok(); }
 
     @GetMapping("/options")
+    /** 获取下拉选项 — 返回 id + name 的简略列表 */
     public ApiResponse<?> options(@AuthenticationPrincipal UserPrincipal principal) {
         return ApiResponse.ok(fbService.productOptions(principal.getUserId()));
     }

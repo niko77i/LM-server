@@ -13,8 +13,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-
-/** Service interface */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -23,6 +21,7 @@ public class AccountServiceImpl implements AccountService {
     private final AccountsMapper accountsMapper;
 
     @Override
+    /** 分页列表查询 — 支持多条件筛选 */
     public PagedResponse<Accounts> list(Long ownerId, int page, int size, String search, Long statusId, Long mccId, Long agentId) {
         var qw = new LambdaQueryWrapper<Accounts>().eq(Accounts::getOwnerId, ownerId).isNull(Accounts::getDeletedAt);
         if (search != null && !search.isBlank())
@@ -35,9 +34,11 @@ public class AccountServiceImpl implements AccountService {
         return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
     }
 
+    /** 按 ID 查询 — 返回单条记录 */
     @Override public Accounts getById(Long id) { return accountsMapper.selectById(id); }
 
     @Override
+    /** 新增记录 — 返回创建后的完整对象 */
     public Accounts create(Long ownerId, String name, String accountId, Long mccId, Long agentId, Long statusId, String tz) {
         Accounts a = new Accounts(); a.setName(name); a.setAccountId(accountId); a.setOwnerId(ownerId);
         a.setMccId(mccId); a.setAgentId(agentId); a.setStatusId(statusId); a.setTimezone(tz != null ? tz : "");
@@ -46,6 +47,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    /** 更新记录 — 部分字段更新，只改传入的非 null 字段 */
     public Accounts update(Long id, String name, Long mccId, Long agentId, Long statusId, String tz) {
         Accounts a = accountsMapper.selectById(id); if (a == null) return null;
         if (name != null) a.setName(name);
@@ -56,11 +58,13 @@ public class AccountServiceImpl implements AccountService {
         a.setUpdatedAt(LocalDateTime.now()); accountsMapper.updateById(a); return a;
     }
 
+    /** 删除记录 */
     @Override public void delete(Long id) {
         Accounts a = accountsMapper.selectById(id);
         if (a != null) { a.setDeletedAt(LocalDateTime.now()); accountsMapper.updateById(a); }
     }
 
+    /** 获取下拉选项 — 返回 id + name 的简略列表 */
     @Override public List<Accounts> options(Long ownerId) {
         return accountsMapper.selectList(new LambdaQueryWrapper<Accounts>().eq(Accounts::getOwnerId, ownerId));
     }

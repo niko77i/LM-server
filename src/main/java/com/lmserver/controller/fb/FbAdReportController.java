@@ -10,8 +10,10 @@ import com.lmserver.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+/**
+ * FB 广告报告控制器 — /api/fb/reports/*，FB广告投放数据的导入查询
+ */
 
-/** REST Controller [/api/fb/reports] */
 @RestController
 @RequestMapping("/api/fb/reports")
 @RequiredArgsConstructor
@@ -20,6 +22,7 @@ public class FbAdReportController {
     private final FbAdReportsMapper mapper;
 
     @GetMapping("/list")
+    /** 分页列表查询 — 支持多条件筛选 */
     public PagedResponse<FbAdReports> list(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String productName) {
@@ -31,9 +34,11 @@ public class FbAdReportController {
     }
 
     @PostMapping("/create")
+    /** 新增记录 — 返回创建后的完整对象 */
     public ApiResponse<FbAdReports> create(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody FbAdReports r) { r.setUserId(principal.getUserId()); mapper.insert(r); return ApiResponse.ok(r); }
 
     @DeleteMapping("/{id}")
+    /** 删除记录 */
     public ApiResponse<Void> delete(@PathVariable Long id) { mapper.deleteById(id); return ApiResponse.ok(); }
 }

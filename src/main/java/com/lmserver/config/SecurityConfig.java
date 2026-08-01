@@ -15,8 +15,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+/**
+ * Spring Security 安全配置 — JWT 无状态认证 + 路由权限规则 + BCrypt 密码编码器
+ */
 
-/** Spring configuration */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -25,6 +27,7 @@ public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
 
     @Bean
+    /** 安全过滤器链配置 — 定义公开路由、权限规则、过滤器注册 */
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(CsrfConfigurer::disable)
@@ -49,6 +52,7 @@ public class SecurityConfig {
     }
 
     @Bean
+    /** BCrypt 密码编码器 Bean */
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }

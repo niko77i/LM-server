@@ -6,8 +6,6 @@ import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-/** Entity mapped to table: fbproducts */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

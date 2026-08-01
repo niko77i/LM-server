@@ -10,8 +10,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+/**
+ * 账户管理控制器 — /api/accounts/*，GG平台广告账户的CRUD+软删除+下拉选项
+ */
 
-/** REST Controller [/api/accounts] */
 @RestController
 @RequestMapping("/api/accounts")
 @RequiredArgsConstructor
@@ -20,6 +22,7 @@ public class AccountController {
     private final AccountService accountService;
 
     @GetMapping("/list")
+    /** 分页列表查询 — 支持多条件筛选 */
     public PagedResponse<Accounts> list(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page,
@@ -32,12 +35,14 @@ public class AccountController {
     }
 
     @GetMapping("/{id}")
+    /** 获取单条记录详情 — 按主键 ID 查询 */
     public ApiResponse<Accounts> detail(@PathVariable Long id) {
         Accounts a = accountService.getById(id);
         return a != null ? ApiResponse.ok(a) : ApiResponse.fail("账户不存在");
     }
 
     @PostMapping("/create")
+    /** 新增记录 — 返回创建后的完整对象 */
     public ApiResponse<Accounts> create(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, Object> body) {
         String name = (String) body.get("name");
@@ -49,6 +54,7 @@ public class AccountController {
     }
 
     @PutMapping("/{id}")
+    /** 更新记录 — 部分字段更新，只改传入的非 null 字段 */
     public ApiResponse<Accounts> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         Accounts a = accountService.update(id,
                 (String) body.get("name"), lng(body, "mcc_id"), lng(body, "agent_id"),
@@ -57,12 +63,14 @@ public class AccountController {
     }
 
     @DeleteMapping("/{id}")
+    /** 删除记录 */
     public ApiResponse<Void> delete(@PathVariable Long id) {
         accountService.delete(id);
         return ApiResponse.ok();
     }
 
     @GetMapping("/options")
+    /** 获取下拉选项 — 返回 id + name 的简略列表 */
     public ApiResponse<?> options(@AuthenticationPrincipal UserPrincipal principal) {
         return ApiResponse.ok(accountService.options(principal.getUserId()));
     }

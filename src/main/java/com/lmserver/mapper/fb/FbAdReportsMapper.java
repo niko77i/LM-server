@@ -3,8 +3,6 @@ package com.lmserver.mapper.fb;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.lmserver.entity.fb.FbAdReports;
 import org.apache.ibatis.annotations.Mapper;
-
-/** MyBatis-Plus Mapper */
 @Mapper
 public interface FbAdReportsMapper extends BaseMapper<FbAdReports> {
 }

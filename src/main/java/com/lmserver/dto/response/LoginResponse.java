@@ -6,8 +6,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+/**
+ * 登录成功响应 — accessToken(1小时) + refreshToken(30天) + 用户信息(id/username/role/platform/displayName)
+ */
 
-/** Data Transfer Object */
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
