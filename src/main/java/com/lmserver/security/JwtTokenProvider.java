@@ -3,19 +3,17 @@ package com.lmserver.security;
 import com.lmserver.config.JwtConfig;
 import com.lmserver.util.JwtUtil;
 import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-/**
- * JWT Token 提供者，桥接 JwtUtil 和 Spring Security。
- */
+import java.util.Date;
+
+@Slf4j
 @Component
 public class JwtTokenProvider {
 
-    private static final Logger log = LoggerFactory.getLogger(JwtTokenProvider.class);
     private final JwtConfig jwtConfig;
     private JwtUtil jwtUtil;
 
@@ -28,11 +26,10 @@ public class JwtTokenProvider {
         String secret = jwtConfig.getSecret();
         if (secret == null || secret.isBlank() || secret.length() < 32) {
             throw new IllegalStateException(
-                    "【安全错误】JWT_SECRET 不能使用默认值！请设置环境变量 JWT_SECRET。\n"
+                    "【安全错误】JWT_SECRET 不能使用默认值！\n"
                     + "生成命令: openssl rand -base64 64");
         }
-        this.jwtUtil = new JwtUtil(
-                secret,
+        this.jwtUtil = new JwtUtil(secret,
                 jwtConfig.getAccessTokenExpiration(),
                 jwtConfig.getRefreshTokenExpiration());
         log.info("JWT TokenProvider 初始化完成");
@@ -51,24 +48,17 @@ public class JwtTokenProvider {
         String role = jwtUtil.getRole(token);
         String platform = jwtUtil.getPlatform(token);
         int tv = jwtUtil.getTokenVersion(token);
-
         UserPrincipal principal = new UserPrincipal(userId, "user-" + userId, role, platform, tv);
         return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
     }
 
-    public boolean validateToken(String token) {
-        return jwtUtil.isValid(token);
-    }
-
-    public boolean validateToken(String token, int currentVersion) {
-        return jwtUtil.isValid(token, currentVersion);
-    }
-
+    public boolean validateToken(String token) { return jwtUtil.isValid(token); }
+    public boolean validateToken(String token, int v) { return jwtUtil.isValid(token, v); }
     public Long getUserId(String token) { return jwtUtil.getUserId(token); }
     public String getRole(String token) { return jwtUtil.getRole(token); }
     public String getPlatform(String token) { return jwtUtil.getPlatform(token); }
     public int getTokenVersion(String token) { return jwtUtil.getTokenVersion(token); }
-    public java.util.Date getExpiration(String token) { return jwtUtil.getExpiration(token); }
+    public Date getExpiration(String token) { return jwtUtil.getExpiration(token); }
     public boolean isRefreshToken(String token) { return jwtUtil.isRefreshToken(token); }
     public long getAccessExpiration() { return jwtUtil.getAccessExpiration(); }
 }

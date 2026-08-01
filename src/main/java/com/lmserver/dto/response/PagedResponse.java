@@ -1,11 +1,19 @@
 package com.lmserver.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 
 /**
  * 分页响应。字段名 items 匹配前端 response.items。
  */
+@Getter
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class PagedResponse<T> {
 
@@ -15,8 +23,6 @@ public class PagedResponse<T> {
     private int page;
     private int size;
 
-    private PagedResponse() {}
-
     public static <T> PagedResponse<T> of(List<T> items, long total, int page, int size) {
         PagedResponse<T> r = new PagedResponse<>();
         r.items = items;
@@ -25,10 +31,4 @@ public class PagedResponse<T> {
         r.size = size;
         return r;
     }
-
-    public boolean isSuccess() { return success; }
-    public List<T> getItems() { return items; }
-    public long getTotal() { return total; }
-    public int getPage() { return page; }
-    public int getSize() { return size; }
 }

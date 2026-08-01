@@ -1,7 +1,6 @@
 package com.lmserver.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,14 +11,10 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 
-/**
- * 异步线程池配置。@Async 必须指定线程池名 "ggAsyncExecutor"。
- */
+@Slf4j
 @Configuration
 @EnableAsync
 public class AsyncConfig implements AsyncConfigurer {
-
-    private static final Logger log = LoggerFactory.getLogger(AsyncConfig.class);
 
     @Override
     @Bean("ggAsyncExecutor")

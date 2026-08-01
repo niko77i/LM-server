@@ -29,3 +29,10 @@ config/service-account.json
 
 # Temp
 temp/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Web (legacy)
+src/main/web/

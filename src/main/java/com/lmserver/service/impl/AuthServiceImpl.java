@@ -1,32 +1,24 @@
 package com.lmserver.service.impl;
 
 import com.lmserver.dto.response.LoginResponse;
+import com.lmserver.dto.response.LoginResponse.UserInfo;
 import com.lmserver.enums.UserRole;
 import com.lmserver.security.JwtTokenProvider;
 import com.lmserver.service.AuthService;
 import com.lmserver.util.PasswordUtil;
 import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * 认证服务实现。
- * Phase 1: 使用内存存储，硬编码 developer 账户。
- * 后续阶段替换为 JPA + MySQL。
- */
+@Slf4j
 @Service
 public class AuthServiceImpl implements AuthService {
 
-    private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
-
     private final JwtTokenProvider jwtTokenProvider;
-
-    /** Phase 1 内存用户存储（后续替换为 UserRepository） */
     private final Map<Long, MemoryUser> users = new ConcurrentHashMap<>();
     private final AtomicLong idGen = new AtomicLong(1);
 
@@ -36,11 +28,9 @@ public class AuthServiceImpl implements AuthService {
 
     @PostConstruct
     public void init() {
-        // Phase 1: 硬编码 developer 账户用于测试
-        // 密码: admin123（BCrypt 编码）
-        String encodedPwd = PasswordUtil.encode("admin123");
         MemoryUser dev = new MemoryUser(
-                idGen.getAndIncrement(), "carl567", encodedPwd,
+                idGen.getAndIncrement(), "carl567",
+                PasswordUtil.encode("admin123"),
                 "developer", "gg", "系统管理员");
         users.put(dev.id, dev);
         log.info("Phase 1 初始化: 已创建 developer 账户 (carl567 / admin123)");
@@ -50,38 +40,26 @@ public class AuthServiceImpl implements AuthService {
     public LoginResponse login(String username, String password) {
         MemoryUser user = users.values().stream()
                 .filter(u -> u.username.equals(username))
-                .findFirst()
-                .orElse(null);
+                .findFirst().orElse(null);
 
-        if (user == null || !PasswordUtil.matches(password, user.password)) {
-            return null;
-        }
+        if (user == null || !PasswordUtil.matches(password, user.password)) return null;
+        if (!UserRole.fromValue(user.role).canLogin()) return null;
 
-        UserRole role = UserRole.fromValue(user.role);
-        if (!role.canLogin()) {
-            return null;
-        }
-
-        String accessToken = jwtTokenProvider.createAccessToken(
-                user.id, user.role, user.platform, 0);
+        String accessToken = jwtTokenProvider.createAccessToken(user.id, user.role, user.platform, 0);
         String refreshToken = jwtTokenProvider.createRefreshToken(user.id, 0);
 
         log.info("用户登录成功: {} (角色: {})", user.username, user.role);
-        return LoginResponse.of(
-                accessToken, refreshToken,
-                LoginResponse.UserInfo.of(
-                        user.id, user.username, user.role,
-                        user.platform, user.displayName));
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .user(toUserInfo(user))
+                .build();
     }
 
     @Override
-    public LoginResponse.UserInfo register(String username, String password, String displayName) {
-        // 检查用户名唯一性
-        boolean exists = users.values().stream()
-                .anyMatch(u -> u.username.equals(username));
-        if (exists) {
-            return null;
-        }
+    public UserInfo register(String username, String password, String displayName) {
+        boolean exists = users.values().stream().anyMatch(u -> u.username.equals(username));
+        if (exists) return null;
 
         MemoryUser user = new MemoryUser(
                 idGen.getAndIncrement(), username,
@@ -89,42 +67,32 @@ public class AuthServiceImpl implements AuthService {
                 "user", "gg",
                 displayName != null ? displayName : username);
         users.put(user.id, user);
-
         log.info("用户注册成功: {} (id={})", username, user.id);
-        return LoginResponse.UserInfo.of(
-                user.id, user.username, user.role,
-                user.platform, user.displayName);
+        return toUserInfo(user);
     }
 
     @Override
     public String refreshToken(String refreshToken) {
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
+        if (!jwtTokenProvider.validateToken(refreshToken) || !jwtTokenProvider.isRefreshToken(refreshToken)) {
             return null;
         }
-        if (!jwtTokenProvider.isRefreshToken(refreshToken)) {
-            return null;
-        }
-        Long userId = jwtTokenProvider.getUserId(refreshToken);
-        MemoryUser user = users.get(userId);
-        if (user == null) {
-            return null;
-        }
-        return jwtTokenProvider.createAccessToken(
-                user.id, user.role, user.platform, 0);
+        MemoryUser user = users.get(jwtTokenProvider.getUserId(refreshToken));
+        if (user == null) return null;
+        return jwtTokenProvider.createAccessToken(user.id, user.role, user.platform, 0);
     }
 
     @Override
-    public LoginResponse.UserInfo getCurrentUser(Long userId) {
+    public UserInfo getCurrentUser(Long userId) {
         MemoryUser user = users.get(userId);
-        if (user == null) {
-            return null;
-        }
-        return LoginResponse.UserInfo.of(
-                user.id, user.username, user.role,
-                user.platform, user.displayName);
+        return user != null ? toUserInfo(user) : null;
     }
 
-    // ──────── Phase 1 内存用户模型 ────────
+    private UserInfo toUserInfo(MemoryUser u) {
+        return UserInfo.builder()
+                .id(u.id).username(u.username).role(u.role)
+                .platform(u.platform).displayName(u.displayName)
+                .build();
+    }
 
     private static class MemoryUser {
         final Long id;

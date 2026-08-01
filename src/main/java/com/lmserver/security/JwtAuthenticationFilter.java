@@ -6,17 +6,17 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.Set;
 
-/**
- * JWT 认证过滤器。从 Authorization 头提取 Bearer Token 并设置 SecurityContext。
- */
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Set<String> PUBLIC_PATHS = Set.of(
@@ -42,7 +42,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String token = resolveToken(request);
-
         if (token == null || !jwtTokenProvider.validateToken(token)) {
             sendUnauthorized(response, token == null ? "缺少认证 Token" : "Token 无效或已过期");
             return;
@@ -51,16 +50,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(
                 jwtTokenProvider.getAuthentication(token));
 
-        // 滑动过期：剩余有效期 < 30% 时签发新 Token
-        java.util.Date expiration = jwtTokenProvider.getExpiration(token);
+        // 滑动过期：剩余 < 30% 时签发新 Token
+        Date expiration = jwtTokenProvider.getExpiration(token);
         if (expiration != null) {
             long remaining = expiration.getTime() - System.currentTimeMillis();
             if (remaining > 0 && remaining < jwtTokenProvider.getAccessExpiration() * 0.3) {
-                Long userId = jwtTokenProvider.getUserId(token);
-                String role = jwtTokenProvider.getRole(token);
-                String platform = jwtTokenProvider.getPlatform(token);
-                int tv = jwtTokenProvider.getTokenVersion(token);
-                String newToken = jwtTokenProvider.createAccessToken(userId, role, platform, tv);
+                String newToken = jwtTokenProvider.createAccessToken(
+                        jwtTokenProvider.getUserId(token),
+                        jwtTokenProvider.getRole(token),
+                        jwtTokenProvider.getPlatform(token),
+                        jwtTokenProvider.getTokenVersion(token));
                 response.setHeader("x-new-access-token", newToken);
             }
         }

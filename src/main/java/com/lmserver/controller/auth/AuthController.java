@@ -7,26 +7,19 @@ import com.lmserver.dto.response.LoginResponse;
 import com.lmserver.security.UserPrincipal;
 import com.lmserver.service.AuthService;
 import jakarta.validation.Valid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
-    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
-
-    /**
-     * 用户登录。POST /api/auth/login
-     */
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest req) {
         LoginResponse result = authService.login(req.getUsername(), req.getPassword());
@@ -36,9 +29,6 @@ public class AuthController {
         return ApiResponse.ok(result);
     }
 
-    /**
-     * 用户注册。POST /api/auth/register
-     */
     @PostMapping("/register")
     public ApiResponse<LoginResponse.UserInfo> register(@Valid @RequestBody RegisterRequest req) {
         LoginResponse.UserInfo user = authService.register(
@@ -49,9 +39,6 @@ public class AuthController {
         return ApiResponse.ok(user);
     }
 
-    /**
-     * 刷新 Token。POST /api/auth/refresh
-     */
     @PostMapping("/refresh")
     public ApiResponse<String> refresh(@RequestHeader("Authorization") String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -64,19 +51,11 @@ public class AuthController {
         return ApiResponse.ok(newToken);
     }
 
-    /**
-     * 获取当前用户信息。GET /api/auth/me
-     */
     @GetMapping("/me")
     public ApiResponse<LoginResponse.UserInfo> me(@AuthenticationPrincipal UserPrincipal principal) {
-        if (principal == null) {
-            return ApiResponse.fail("未认证");
-        }
+        if (principal == null) return ApiResponse.fail("未认证");
         LoginResponse.UserInfo user = authService.getCurrentUser(principal.getUserId());
-        if (user == null) {
-            return ApiResponse.fail("用户不存在");
-        }
+        if (user == null) return ApiResponse.fail("用户不存在");
         return ApiResponse.ok(user);
     }
-
 }

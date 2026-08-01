@@ -1,7 +1,9 @@
 package com.lmserver.exception;
 
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
+@Getter
 public class BusinessException extends RuntimeException {
 
     private final HttpStatus status;
@@ -20,7 +22,4 @@ public class BusinessException extends RuntimeException {
         this.status = status;
         this.errorCode = errorCode;
     }
-
-    public HttpStatus getStatus() { return status; }
-    public String getErrorCode() { return errorCode; }
 }
