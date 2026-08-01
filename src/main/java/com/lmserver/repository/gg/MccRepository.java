@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MccRepository extends JpaRepository<Mcc, Long> {
+    java.util.List<Mcc> findByOwnerIdOrderByNameAsc(Long ownerId);
 }
