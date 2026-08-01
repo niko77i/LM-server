@@ -138,10 +138,27 @@ public class FbExtractService {
     /**
      * 检查重复 — 查询 fb_ad_reports 表中已存在的记录。
      */
+    /**
+     * 检查重复 — 按 (user_id, product_name, line_name, account_id, report_date) 查重。
+     */
     public List<Map<String, String>> checkDuplicates(Long userId, String productName,
             String lineName, String reportDate, List<Map<String, String>> records) {
-        // TODO: 按 (user_id, product_name, line_name, account_id, report_date) 查重
-        return List.of();
+        var reportDt = java.time.LocalDate.parse(reportDate).atStartOfDay();
+        List<Map<String, String>> duplicates = new ArrayList<>();
+
+        for (Map<String, String> r : records) {
+            var existing = fbAdReportsMapper.selectList(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.lmserver.entity.fb.FbAdReports>()
+                            .eq(com.lmserver.entity.fb.FbAdReports::getUserId, userId)
+                            .eq(com.lmserver.entity.fb.FbAdReports::getProductName, productName)
+                            .eq(com.lmserver.entity.fb.FbAdReports::getLineName, lineName)
+                            .eq(com.lmserver.entity.fb.FbAdReports::getAccountId, r.get("account_id"))
+                            .eq(com.lmserver.entity.fb.FbAdReports::getReportDate, reportDt));
+            if (!existing.isEmpty()) {
+                duplicates.add(r);
+            }
+        }
+        return duplicates;
     }
 
     /**
