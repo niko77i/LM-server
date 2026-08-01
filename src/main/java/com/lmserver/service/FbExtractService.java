@@ -23,7 +23,8 @@ public class FbExtractService {
     private final com.lmserver.mapper.fb.FbAdReportsMapper fbAdReportsMapper;
     private final SheetsSyncLogMapper syncLogMapper;
     private final GoogleSheetsService sheetsService;
-    private final ThreadPoolTaskExecutor taskExecutor;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ThreadPoolTaskExecutor taskExecutor;
 
     /**
      * 解析提取文本 → 结构化数据（含尾部校验，对齐设计文档 v1.2）。
@@ -186,6 +187,7 @@ public class FbExtractService {
             syncLogMapper.insert(syncLog);
 
             final int finalSaved = saved;
+            if (taskExecutor == null) { log.info("[FB-Sheets] 异步线程池未配置，跳过Sheets写入"); return saved; }
             taskExecutor.execute(() -> {
                 try {
                     // TODO: sheetsService.upsertFbReports(...)
