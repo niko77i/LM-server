@@ -1,0 +1,39 @@
+# 测试环境配置 — 使用 H2 内存数据库替代 MySQL
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:test-schema.sql'
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  mail:
+    host: localhost
+    port: 3025
+    username: test
+    password: test
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
+  sql:
+    init:
+      mode: never
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+notification:
+  telegram:
+    bot-token: test
+    chat-id: "0"
+
+google:
+  sheets:
+    credentials-path: /nonexistent
+
+jwt:
+  secret: dGVzdC1zZWNyZXQta2V5LWZvci1sbS1zZXJ2ZXItdGVzdHMtbWluaW11bS0zMi1jaGFyYWN0ZXJz
+  access-token-expiration: 3600000
+  refresh-token-expiration: 2592000000

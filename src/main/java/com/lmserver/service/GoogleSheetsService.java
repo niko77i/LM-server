@@ -30,6 +30,10 @@ public class GoogleSheetsService {
     @PostConstruct
     public void init() {
         try {
+            if (!new java.io.File(credentialsPath).exists()) {
+                log.warn("Google Sheets 凭证文件不存在: {}，跳过初始化", credentialsPath);
+                return;
+            }
             GoogleCredentials credentials = GoogleCredentials
                     .fromStream(new FileInputStream(credentialsPath))
                     .createScoped("https://www.googleapis.com/auth/spreadsheets");

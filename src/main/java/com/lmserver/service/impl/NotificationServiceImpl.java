@@ -33,13 +33,14 @@ public class NotificationServiceImpl implements NotificationService {
     @Value("${notification.telegram.chat-id}")
     private String chatId;
 
-    public NotificationServiceImpl(JavaMailSender mailSender) {
+    public NotificationServiceImpl(@org.springframework.beans.factory.annotation.Autowired(required = false) JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
 
     @Override
     @Async("ggAsyncExecutor")
     public void sendEmail(String to, String subject, String content) {
+        if (mailSender == null) { log.info("[邮件] 未配置SMTP，跳过: {}", subject); return; }
         try {
             MimeMessage msg = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(msg, "UTF-8");
