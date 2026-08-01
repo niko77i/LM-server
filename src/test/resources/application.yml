@@ -37,3 +37,15 @@ jwt:
   secret: dGVzdC1zZWNyZXQta2V5LWZvci1sbS1zZXJ2ZXItdGVzdHMtbWluaW11bS0zMi1jaGFyYWN0ZXJz
   access-token-expiration: 3600000
   refresh-token-expiration: 2592000000
+
+ai:
+  atlas:
+    endpoint: https://test.example.com/v1
+    default-model: test-model
+  doubao:
+    endpoint: https://test.example.com/api/v3
+  veo:
+    endpoint: https://test.example.com/v1
+
+ffmpeg:
+  path: ffmpeg
