@@ -26,7 +26,7 @@ public class ConfigController {
 
     @GetMapping("/list")
     public ApiResponse<List<Config>> list() {
-        return ApiResponse.ok(mapper.selectList(new LambdaQueryWrapper<>()));
+        return ApiResponse.ok(mapper.selectList(null));
     }
 
     @GetMapping("/key/{key}")
