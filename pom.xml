@@ -119,6 +119,12 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- 监控 (Actuator + Prometheus) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- API 文档 (Swagger/OpenAPI) -->
         <dependency>
             <groupId>org.springdoc</groupId>
