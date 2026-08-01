@@ -15,7 +15,7 @@ spring:
 
   # MySQL 数据库
   datasource:
-    url: jdbc:mysql://localhost:3306/lmserver?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3306/lmserver?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
     password: 123456
@@ -24,7 +24,7 @@ spring:
       minimum-idle: 5
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     show-sql: false
     open-in-view: false
     properties:
