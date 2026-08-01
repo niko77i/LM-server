@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface FbBmsRepository extends JpaRepository<FbBms, Long> {
+    java.util.List<FbBms> findByOwnerIdOrderByNameAsc(Long ownerId);
 }

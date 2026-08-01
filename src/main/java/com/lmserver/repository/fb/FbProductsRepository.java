@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface FbProductsRepository extends JpaRepository<FbProducts, Long> {
+    java.util.List<FbProducts> findByOwnerIdOrderByProductNameAsc(Long ownerId);
 }
