@@ -39,7 +39,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/auth/login", "/api/auth/register",
-                    "/api/auth/refresh", "/api/health"
+                    "/api/auth/refresh", "/api/health",
+                    "/swagger-ui/**", "/v3/api-docs/**",
+                    "/actuator/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET,
                     "/api/video/download", "/api/video/progress", "/api/image"

@@ -186,7 +186,7 @@ public class FbExtractService {
                 report.setPurchases(0L);
                 report.setCostPerPurchase(0.0);
                 report.setSavedAt(java.time.LocalDateTime.now());
-                fbAdReportsMapper.insert(report);
+                fbAdReportsMapper.upsert(report);
                 saved++;
             } catch (Exception e) {
                 log.warn("保存记录失败: {}", e.getMessage());
