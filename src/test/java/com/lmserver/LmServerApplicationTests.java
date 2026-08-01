@@ -1,0 +1,12 @@
+package com.lmserver;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class LmServerApplicationTests {
+
+    @Test
+    void contextLoads() {
+    }
+}

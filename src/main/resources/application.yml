@@ -1,0 +1,43 @@
+server:
+  port: ${SERVER_PORT:5001}
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: lm-server
+
+  # Phase 1: 排除数据库自动配置
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+
+jwt:
+  secret: ${JWT_SECRET:Z2ctc2VydmVyLWp3dC1zZWNyZXQtMjAyNi1jaGFuZ2UtaW4tcHJvZHVjdGlvbg==}
+  access-token-expiration: 3600000
+  refresh-token-expiration: 2592000000
+
+logging:
+  level:
+    com.lmserver: DEBUG
+    org.springframework.security: INFO
+  file:
+    path: ./logs
