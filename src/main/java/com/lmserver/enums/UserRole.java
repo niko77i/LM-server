@@ -2,10 +2,6 @@
  * 用户角色枚举 — developer(最高权限，跨平台) > admin > viewer(只读) > user > hidden(禁止登录)
  */
 
-/**
- * 用户角色枚举 — developer(最高权限，跨平台) > admin > viewer(只读) > user > hidden(禁止登录)
- */
-
 package com.lmserver.enums;
 
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

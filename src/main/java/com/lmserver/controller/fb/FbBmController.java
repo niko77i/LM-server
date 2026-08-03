@@ -14,10 +14,6 @@ import java.util.Map;
  * FB BM 管理控制器 — /api/fb/bms/*，BM的CRUD+软删除+下拉选项
  */
 
-/**
- * FB BM 管理控制器 — /api/fb/bms/*，BM的CRUD+软删除+下拉选项
- */
-
 @RestController
 @RequestMapping("/api/fb/bms")
 @RequiredArgsConstructor

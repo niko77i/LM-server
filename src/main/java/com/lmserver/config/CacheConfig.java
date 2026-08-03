@@ -12,10 +12,6 @@ import java.util.concurrent.TimeUnit;
  * 本地缓存配置 — 基于 Caffeine，写入后60秒过期，最大1000条
  */
 
-/**
- * 本地缓存配置 — 基于 Caffeine，写入后60秒过期，最大1000条
- */
-
 @Configuration
 @EnableCaching
 public class CacheConfig {

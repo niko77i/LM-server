@@ -1,11 +1,3 @@
-/**
- * 账户管理服务接口 — 多条件筛选(名称/账号ID/状态/MCC/代理)+软删除
- */
-
-/**
- * 账户管理服务接口 — 多条件筛选(名称/账号ID/状态/MCC/代理)+软删除
- */
-
 package com.lmserver.service;
 
 import com.lmserver.dto.response.PagedResponse;
@@ -13,6 +5,10 @@ import com.lmserver.dto.response.SyncResult;
 import com.lmserver.entity.gg.Accounts;
 import java.util.List;
 import java.util.Map;
+
+/**
+ * 账户管理服务接口 — 多条件筛选(名称/账号ID/状态/MCC/代理)+软删除+v1.4清账+v1.5 Sheet同步。
+ */
 public interface AccountService {
     PagedResponse<Accounts> list(Long ownerId, int page, int size, String search, Long statusId, Long mccId, Long agentId);
     Accounts getById(Long id);

@@ -13,14 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 系统设置控制器 - 配置管理、标签管理、账户设置。
- * 路由前缀: /api/settings
- */
-/**
- * 系统设置控制器 — /api/settings/*，批量配置保存+标签管理
- */
-
-/**
  * 系统设置控制器 — /api/settings/*，批量配置保存+标签管理
  */
 

@@ -2,10 +2,6 @@
  * 403 平台禁止异常 — 跨平台越权访问
  */
 
-/**
- * 403 平台禁止异常 — 跨平台越权访问
- */
-
 package com.lmserver.exception;
 
 import org.springframework.http.HttpStatus;

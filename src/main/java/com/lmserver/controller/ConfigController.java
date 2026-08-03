@@ -13,10 +13,6 @@ import java.util.Map;
  * 系统配置控制器 — /api/config/*，键值对配置的查询和修改
  */
 
-/**
- * 系统配置控制器 — /api/config/*，键值对配置的查询和修改
- */
-
 @RestController
 @RequestMapping("/api/config")
 @RequiredArgsConstructor

@@ -13,15 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 选项管理: agents / statuses / mcc-levels / sales-persons / regions
- * <p>
- * 通过路径变量 {type} 区分不同选项类型，避免 5 个 Controller 重复代码。
- */
-/**
- * 选项管理控制器 — /api/{type}/*，通过路径变量统一分发5个选项表的CRUD
- */
-
-/**
  * 选项管理控制器 — /api/{type}/*，通过路径变量统一分发5个选项表的CRUD
  */
 

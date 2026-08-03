@@ -2,10 +2,6 @@
  * JWT 核心工具 — HMAC-SHA256 Token 生成/解析/校验/字段提取，纯函数无 Spring 依赖
  */
 
-/**
- * JWT 核心工具 — HMAC-SHA256 Token 生成/解析/校验/字段提取，纯函数无 Spring 依赖
- */
-
 package com.lmserver.util;
 
 import io.jsonwebtoken.Claims;

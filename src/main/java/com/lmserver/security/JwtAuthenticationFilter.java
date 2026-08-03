@@ -19,10 +19,6 @@ import java.util.Set;
  * JWT 认证过滤器 — 从 Authorization 头提取 Bearer Token，校验后设置 SecurityContext，剩余有效期不足30%时自动续签
  */
 
-/**
- * JWT 认证过滤器 — 从 Authorization 头提取 Bearer Token，校验后设置 SecurityContext，剩余有效期不足30%时自动续签
- */
-
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

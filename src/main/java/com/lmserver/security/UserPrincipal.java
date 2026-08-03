@@ -9,10 +9,6 @@ import java.util.Collection;
  * Spring Security 用户主体 — 从 JWT Claims 中提取 userId/role/platform/tokenVersion，实现 UserDetails 接口
  */
 
-/**
- * Spring Security 用户主体 — 从 JWT Claims 中提取 userId/role/platform/tokenVersion，实现 UserDetails 接口
- */
-
 @Getter
 public class UserPrincipal implements UserDetails {
 

@@ -2,10 +2,6 @@
  * 文案管理服务接口 — 按地区和归属用户筛选的文案CRUD
  */
 
-/**
- * 文案管理服务接口 — 按地区和归属用户筛选的文案CRUD
- */
-
 package com.lmserver.service;
 
 import com.lmserver.dto.response.PagedResponse;

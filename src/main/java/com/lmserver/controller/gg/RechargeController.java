@@ -15,10 +15,6 @@ import java.util.Map;
  * 充值管理控制器 — /api/recharge/*，GG平台充值记录的CRUD
  */
 
-/**
- * 充值管理控制器 — /api/recharge/*，GG平台充值记录的CRUD
- */
-
 @RestController
 @RequestMapping("/api/recharge")
 @RequiredArgsConstructor

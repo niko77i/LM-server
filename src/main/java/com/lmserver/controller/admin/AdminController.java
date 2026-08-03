@@ -16,10 +16,6 @@ import java.util.Map;
  * 管理员控制器 — /api/admin/*，用户列表/编辑/禁用，@PreAuthorize控制权限
  */
 
-/**
- * 管理员控制器 — /api/admin/*，用户列表/编辑/禁用，@PreAuthorize控制权限
- */
-
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor

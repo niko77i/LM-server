@@ -12,10 +12,6 @@ import org.springframework.web.bind.annotation.*;
  * 审计日志控制器 — /api/audit-log/*，操作审计记录的查询
  */
 
-/**
- * 审计日志控制器 — /api/audit-log/*，操作审计记录的查询
- */
-
 @RestController
 @RequestMapping("/api/audit-log")
 @RequiredArgsConstructor

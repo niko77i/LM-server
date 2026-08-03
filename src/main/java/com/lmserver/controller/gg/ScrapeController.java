@@ -12,14 +12,6 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 图片抓取控制器 - Google Play 截图抓取与缓存。
- * 路由前缀: /api/scrape
- */
-/**
- * 图片抓取控制器 — /api/scrape/*，Google Play截图抓取缓存管理
- */
-
-/**
  * 图片抓取控制器 — /api/scrape/*，Google Play截图抓取缓存管理
  */
 

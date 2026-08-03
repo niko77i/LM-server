@@ -2,10 +2,6 @@
  * 产品管理服务接口 — 按名称/地区/状态筛选的产品分页查询
  */
 
-/**
- * 产品管理服务接口 — 按名称/地区/状态筛选的产品分页查询
- */
-
 package com.lmserver.service;
 
 import com.lmserver.dto.response.PagedResponse;

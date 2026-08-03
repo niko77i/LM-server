@@ -15,10 +15,6 @@ import java.util.Map;
  * 产品管理控制器 — /api/products/*，GG平台产品的完整CRUD+下拉选项
  */
 
-/**
- * 产品管理控制器 — /api/products/*，GG平台产品的完整CRUD+下拉选项
- */
-
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor

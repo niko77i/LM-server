@@ -13,10 +13,6 @@ import java.util.Date;
  * JWT Token 提供者 — 桥接 JwtUtil 与 Spring Security，启动时校验密钥强度，拒绝弱默认密钥
  */
 
-/**
- * JWT Token 提供者 — 桥接 JwtUtil 与 Spring Security，启动时校验密钥强度，拒绝弱默认密钥
- */
-
 @Slf4j
 @Component
 public class JwtTokenProvider {

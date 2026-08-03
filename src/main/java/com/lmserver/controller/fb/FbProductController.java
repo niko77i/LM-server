@@ -14,10 +14,6 @@ import java.util.Map;
  * FB 产品管理控制器 — /api/fb/products/*，FB产品的CRUD+下拉选项
  */
 
-/**
- * FB 产品管理控制器 — /api/fb/products/*，FB产品的CRUD+下拉选项
- */
-
 @RestController
 @RequestMapping("/api/fb/products")
 @RequiredArgsConstructor
