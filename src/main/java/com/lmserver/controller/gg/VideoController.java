@@ -166,4 +166,30 @@ public class VideoController {
         return ApiResponse.ok(videoTasksMapper.selectList(
                 new LambdaQueryWrapper<VideoTasks>().orderByDesc(VideoTasks::getCreatedAt)));
     }
+
+    /** 音乐列表 */
+    @GetMapping("/music/list")
+    public ApiResponse<List<String>> musicList() {
+        File dir = new File("temp/music");
+        String[] files = dir.list((d, n) -> n.endsWith(".mp3") || n.endsWith(".wav") || n.endsWith(".m4a"));
+        return ApiResponse.ok(files != null ? java.util.Arrays.asList(files) : List.of());
+    }
+
+    /** 上传音乐 */
+    @PostMapping("/music/upload")
+    public ApiResponse<String> uploadMusic(@RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        try {
+            File dir = new File("temp/music");
+            if (!dir.exists()) dir.mkdirs();
+            file.transferTo(new File(dir, file.getOriginalFilename()));
+            return ApiResponse.ok("OK");
+        } catch (Exception e) { return ApiResponse.fail(e.getMessage()); }
+    }
+
+    /** 删除音乐 */
+    @DeleteMapping("/music/{name}")
+    public ApiResponse<Void> deleteMusic(@PathVariable String name) {
+        new File("temp/music/" + name).delete();
+        return ApiResponse.ok();
+    }
 }

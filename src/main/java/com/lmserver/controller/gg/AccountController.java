@@ -88,5 +88,24 @@ public class AccountController {
         return ApiResponse.ok(c);
     }
 
+    @PostMapping("/restore/{id}")
+    public ApiResponse<Void> restore(@PathVariable Long id) {
+        com.lmserver.entity.gg.Accounts a = accountService.getById(id);
+        if (a != null) { a.setDeletedAt(null); accountService.update(id, null, null, null, null, null); }
+        return ApiResponse.ok();
+    }
+
+    @GetMapping("/lookup")
+    public ApiResponse<?> lookup(@RequestParam String accountId) {
+        var list = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.lmserver.entity.gg.Accounts>()
+                .eq(com.lmserver.entity.gg.Accounts::getAccountId, accountId);
+        return ApiResponse.ok(null); // TODO: inject mapper
+    }
+
+    @GetMapping("/recharge-records")
+    public ApiResponse<?> rechargeRecords(@RequestParam String accountId) {
+        return ApiResponse.ok(List.of()); // TODO: inject RechargeRecordsMapper
+    }
+
     private Long lng(Map<String, Object> m, String k) { Object v = m.get(k); return v != null ? Long.valueOf(v.toString()) : null; }
 }
