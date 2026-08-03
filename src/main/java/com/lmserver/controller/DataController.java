@@ -6,6 +6,7 @@ import com.lmserver.service.DataImportExportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -30,6 +31,15 @@ public class DataController {
     /**
      * 导入数据 — 从 JSON 文件恢复用户数据。
      */
+    @GetMapping("/export/download")
+    public void exportDownload(@AuthenticationPrincipal UserPrincipal principal,
+            HttpServletResponse resp) throws java.io.IOException {
+        String json = dataService.exportUserData(principal.getUserId());
+        resp.setContentType("application/json;charset=UTF-8");
+        resp.setHeader("Content-Disposition", "attachment; filename=lm-server-export.json");
+        resp.getWriter().write(json);
+    }
+
     @PostMapping("/import")
     public ApiResponse<Integer> importData(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam("file") MultipartFile file) {

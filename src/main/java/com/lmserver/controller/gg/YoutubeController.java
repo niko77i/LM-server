@@ -123,6 +123,9 @@ public class YoutubeController {
         return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
     }
 
+    @DeleteMapping("/consumption/{id}")
+    public ApiResponse<Void> deleteConsumption(@PathVariable Long id) { consumptionMapper.deleteById(id); return ApiResponse.ok(); }
+
         @GetMapping("/tags")
     public ApiResponse<List<Tags>> getTags() {
         return ApiResponse.ok(tagsMapper.selectList(null));

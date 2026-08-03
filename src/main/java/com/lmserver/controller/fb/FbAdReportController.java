@@ -77,4 +77,7 @@ public class FbAdReportController {
                 r.getPurchases() != null ? r.getPurchases() : 0,
                 r.getCostPerPurchase() != null ? r.getCostPerPurchase() : 0));
     }
+
+    @PostMapping("/sync-retry/{logId}")
+    public ApiResponse<Void> syncRetry(@PathVariable Long logId) { return ApiResponse.ok(); } // TODO
 }
