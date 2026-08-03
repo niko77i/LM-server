@@ -39,4 +39,9 @@ public class GoogleAdsController {
         List<Map<String, Object>> rows = adsService.fetchCampaignReport(auth, accountId, startDate, endDate);
         return ApiResponse.ok(rows);
     }
+
+    @PostMapping("/sync")
+    public ApiResponse<String> syncCampaigns(@RequestBody Map<String, String> body) {
+        return ApiResponse.ok("同步已触发"); // TODO: Google Ads API实际调用
+    }
 }
