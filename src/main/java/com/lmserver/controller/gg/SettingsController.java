@@ -37,7 +37,7 @@ public class SettingsController {
  */
     @GetMapping
     public ApiResponse<List<Config>> getAllConfig() {
-        return ApiResponse.ok(configMapper.selectList(null));
+        return ApiResponse.ok(configMapper.selectList(new LambdaQueryWrapper<>()));
     }
     @PutMapping
     /** 批量保存配置 — 遍历 Map 逐个 upsert */
