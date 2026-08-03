@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class ScrapeCache {
 
         @TableField("package_name")
+    @TableId
     private String packageName;
 
     @TableField("image_count")

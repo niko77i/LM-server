@@ -10,7 +10,8 @@ import lombok.NoArgsConstructor;
 @TableName("tags")
 public class Tags {
 
-        private String key;
+        @TableId
+    private String key;
 
     private String value;
 
