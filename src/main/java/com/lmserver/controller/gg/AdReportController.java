@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 /**
  * GG 广告报告控制器 — /api/ad-reports/*，GG广告投放数据的CRUD
@@ -94,5 +95,13 @@ public class AdReportController {
         long totalClicks = list.stream().mapToLong(r -> r.getClicks() != null ? r.getClicks() : 0).sum();
         return ApiResponse.ok(Map.of("totalCost", totalCost, "totalImpressions", totalImpr,
                 "totalClicks", totalClicks, "recordCount", list.size()));
+    }
+
+    @PostMapping("/batch-delete")
+    public ApiResponse<Integer> batchDelete(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, List<Long>> body) {
+        int c = 0;
+        for (Long id : body.getOrDefault("ids", List.of())) { mapper.deleteById(id); c++; }
+        return ApiResponse.ok(c);
     }
 }
