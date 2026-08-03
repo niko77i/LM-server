@@ -81,6 +81,24 @@ public class ProductController {
         return ApiResponse.ok(productService.options(principal.getUserId()));
     }
 
+    @PostMapping("/batch-update") public ApiResponse<Integer> batchUpdate(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked") List<Long> ids = (List<Long>) body.getOrDefault("ids", List.of());
+        int c=0; for (Long id : ids) { productService.update(id, str(body,"product_name"), str(body,"kpi"),
+                str(body,"region"), str(body,"status"), str(body,"customer"), lng(body,"sales_person_id"),
+                lng(body,"mcc_id"), dbl(body,"agency_ratio")); c++; }
+        return ApiResponse.ok(c);
+    }
+
+    @GetMapping("/deleted") public PagedResponse<Products> deleted(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int size) {
+        var qw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Products>()
+                .eq(Products::getOwnerId, principal.getUserId()).isNotNull(Products::getDeletedAt);
+        var pg = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<Products>(page, size);
+        productsMapper.selectPage(pg, qw); return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
+    }
+    @org.springframework.beans.factory.annotation.Autowired private com.lmserver.mapper.gg.ProductsMapper productsMapper;
+
     @PostMapping("/{id}/archive")
     public ApiResponse<Void> archive(@PathVariable Long id) {
         Products p = productService.getById(id);
