@@ -1,8 +1,11 @@
 package com.lmserver.controller.gg;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lmserver.dto.response.ApiResponse;
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.gg.Accounts;
+import com.lmserver.mapper.gg.AccountsMapper;
+import com.lmserver.mapper.gg.RechargeRecordsMapper;
 import com.lmserver.security.UserPrincipal;
 import com.lmserver.service.AccountService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,8 @@ import java.util.Map;
 public class AccountController {
 
     private final AccountService accountService;
+    private final AccountsMapper accountsMapper;
+    private final RechargeRecordsMapper rechargeRecordsMapper;
 
     @GetMapping("/list")
     /** 分页列表查询 — 支持多条件筛选 */
@@ -96,15 +101,17 @@ public class AccountController {
     }
 
     @GetMapping("/lookup")
-    public ApiResponse<?> lookup(@RequestParam String accountId) {
-        var list = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.lmserver.entity.gg.Accounts>()
-                .eq(com.lmserver.entity.gg.Accounts::getAccountId, accountId);
-        return ApiResponse.ok(null); // TODO: inject mapper
+    public ApiResponse<Accounts> lookup(@RequestParam String accountId) {
+        var a = accountsMapper.selectOne(new LambdaQueryWrapper<Accounts>().eq(Accounts::getAccountId, accountId));
+        return a != null ? ApiResponse.ok(a) : ApiResponse.fail("账户不存在");
     }
 
     @GetMapping("/recharge-records")
     public ApiResponse<?> rechargeRecords(@RequestParam String accountId) {
-        return ApiResponse.ok(List.of()); // TODO: inject RechargeRecordsMapper
+        return ApiResponse.ok(rechargeRecordsMapper.selectList(
+                new LambdaQueryWrapper<com.lmserver.entity.gg.RechargeRecords>()
+                        .eq(com.lmserver.entity.gg.RechargeRecords::getAccountId, accountId)
+                        .orderByDesc(com.lmserver.entity.gg.RechargeRecords::getCreatedAt)));
     }
 
     private Long lng(Map<String, Object> m, String k) { Object v = m.get(k); return v != null ? Long.valueOf(v.toString()) : null; }
