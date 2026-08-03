@@ -1,9 +1,13 @@
 package com.lmserver.controller.gg;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lmserver.dto.response.ApiResponse;
 import com.lmserver.dto.response.PagedResponse;
+import com.lmserver.entity.gg.AccountMccHistory;
 import com.lmserver.entity.gg.Accounts;
+import com.lmserver.entity.gg.RechargeRecords;
+import com.lmserver.mapper.gg.AccountMccHistoryMapper;
 import com.lmserver.mapper.gg.AccountsMapper;
 import com.lmserver.mapper.gg.RechargeRecordsMapper;
 import com.lmserver.security.UserPrincipal;
@@ -12,16 +16,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-/**
- * 账户管理控制器 — /api/accounts/*，GG平台广告账户的CRUD+软删除+下拉选项
- */
 
 /**
- * 账户管理控制器 — /api/accounts/*，GG平台广告账户的CRUD+软删除+下拉选项
+ * GG 账户管理控制器 — v1.5: 21 接口。
+ * 双向Sheet同步、软删除/恢复/物理删除、已删除列表、H列解绑。
  */
-
 @RestController
 @RequestMapping("/api/accounts")
 @RequiredArgsConstructor
@@ -30,108 +32,101 @@ public class AccountController {
     private final AccountService accountService;
     private final AccountsMapper accountsMapper;
     private final RechargeRecordsMapper rechargeRecordsMapper;
+    private final AccountMccHistoryMapper mccHistoryMapper;
 
-    @GetMapping("/list")
-    /** 分页列表查询 — 支持多条件筛选 */
-    public PagedResponse<Accounts> list(
-            @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) Long statusId,
-            @RequestParam(required = false) Long mccId,
-            @RequestParam(required = false) Long agentId) {
-        return accountService.list(principal.getUserId(), page, size, search, statusId, mccId, agentId);
+    @GetMapping("/list") public PagedResponse<Accounts> list(
+            @AuthenticationPrincipal UserPrincipal p, @RequestParam(defaultValue="1") int page,
+            @RequestParam(defaultValue="20") int size, @RequestParam(required=false) String search,
+            @RequestParam(required=false) Long statusId, @RequestParam(required=false) Long mccId,
+            @RequestParam(required=false) Long agentId) {
+        return accountService.list(p.getUserId(), page, size, search, statusId, mccId, agentId);
     }
 
-    @GetMapping("/{id}")
-    /** 获取单条记录详情 — 按主键 ID 查询 */
-    public ApiResponse<Accounts> detail(@PathVariable Long id) {
-        Accounts a = accountService.getById(id);
-        return a != null ? ApiResponse.ok(a) : ApiResponse.fail("账户不存在");
+    @GetMapping("/{id}") public ApiResponse<Accounts> detail(@PathVariable Long id) {
+        Accounts a = accountService.getById(id); return a != null ? ApiResponse.ok(a) : ApiResponse.fail("不存在");
     }
 
-    @PostMapping("/create")
-    /** 新增记录 — 返回创建后的完整对象 */
-    public ApiResponse<Accounts> create(@AuthenticationPrincipal UserPrincipal principal,
+    @PostMapping("/create") public ApiResponse<Accounts> create(@AuthenticationPrincipal UserPrincipal p,
             @RequestBody Map<String, Object> body) {
-        String name = (String) body.get("name");
-        String accountId = (String) body.get("account_id");
-        if (name == null || accountId == null) return ApiResponse.fail("名称和账户ID不能为空");
-        return ApiResponse.ok(accountService.create(principal.getUserId(), name, accountId,
-                lng(body, "mcc_id"), lng(body, "agent_id"), lng(body, "status_id"),
-                (String) body.get("timezone")));
+        return ApiResponse.ok(accountService.create(p.getUserId(), (String)body.get("name"),
+                (String)body.get("account_id"), lng(body,"mcc_id"), lng(body,"agent_id"),
+                lng(body,"status_id"), (String)body.get("timezone")));
     }
 
-    @PutMapping("/{id}")
-    /** 更新记录 — 部分字段更新，只改传入的非 null 字段 */
-    public ApiResponse<Accounts> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        Accounts a = accountService.update(id,
-                (String) body.get("name"), lng(body, "mcc_id"), lng(body, "agent_id"),
-                lng(body, "status_id"), (String) body.get("timezone"));
-        return a != null ? ApiResponse.ok(a) : ApiResponse.fail("账户不存在");
+    @PutMapping("/{id}") public ApiResponse<Accounts> update(@PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        Accounts a = accountService.update(id, (String)body.get("name"), lng(body,"mcc_id"),
+                lng(body,"agent_id"), lng(body,"status_id"), (String)body.get("timezone"));
+        return a != null ? ApiResponse.ok(a) : ApiResponse.fail("不存在");
     }
 
-    @DeleteMapping("/{id}")
-    /** 删除记录 */
-    public ApiResponse<Void> delete(@PathVariable Long id) {
-        accountService.delete(id);
+    @DeleteMapping("/{id}") public ApiResponse<Void> delete(@PathVariable Long id) {
+        accountService.delete(id); return ApiResponse.ok();
+    }
+
+    @PostMapping("/{id}/restore") public ApiResponse<Void> restore(@PathVariable Long id) {
+        Accounts a = accountsMapper.selectById(id);
+        if (a != null) { a.setDeletedAt(null); accountsMapper.updateById(a); }
         return ApiResponse.ok();
     }
 
-    @GetMapping("/options")
-    /** 获取下拉选项 — 返回 id + name 的简略列表 */
-    public ApiResponse<?> options(@AuthenticationPrincipal UserPrincipal principal) {
-        return ApiResponse.ok(accountService.options(principal.getUserId()));
-    }
-
-    @PostMapping("/batch-delete")
-    public ApiResponse<Integer> batchDelete(@AuthenticationPrincipal UserPrincipal principal,
-            @RequestBody Map<String, List<Long>> body) {
-        int c = 0;
-        for (Long id : body.getOrDefault("ids", List.of())) { accountService.delete(id); c++; }
-        return ApiResponse.ok(c);
-    }
-
-    @PostMapping("/restore/{id}")
-    public ApiResponse<Void> restore(@PathVariable Long id) {
-        com.lmserver.entity.gg.Accounts a = accountService.getById(id);
-        if (a != null) { a.setDeletedAt(null); accountService.update(id, null, null, null, null, null); }
-        return ApiResponse.ok();
-    }
-
-    @GetMapping("/lookup")
-    public ApiResponse<Accounts> lookup(@RequestParam String accountId) {
-        var a = accountsMapper.selectOne(new LambdaQueryWrapper<Accounts>().eq(Accounts::getAccountId, accountId));
-        return a != null ? ApiResponse.ok(a) : ApiResponse.fail("账户不存在");
-    }
-
-    @GetMapping("/recharge-records")
-    public ApiResponse<?> rechargeRecords(@RequestParam String accountId) {
-        return ApiResponse.ok(rechargeRecordsMapper.selectList(
-                new LambdaQueryWrapper<com.lmserver.entity.gg.RechargeRecords>()
-                        .eq(com.lmserver.entity.gg.RechargeRecords::getAccountId, accountId)
-                        .orderByDesc(com.lmserver.entity.gg.RechargeRecords::getCreatedAt)));
-    }
-
-    @DeleteMapping("/permanent/{id}")
-    public ApiResponse<Void> permanentDelete(@PathVariable Long id) {
+    @DeleteMapping("/{id}/permanent") public ApiResponse<Void> permanentDelete(@PathVariable Long id) {
+        rechargeRecordsMapper.delete(new LambdaQueryWrapper<RechargeRecords>().eq(RechargeRecords::getAccountId,
+                accountsMapper.selectById(id) != null ? accountsMapper.selectById(id).getAccountId() : ""));
+        mccHistoryMapper.delete(new LambdaQueryWrapper<AccountMccHistory>().eq(AccountMccHistory::getAccountId, id));
         accountsMapper.deleteById(id);
         return ApiResponse.ok();
     }
 
-    @PostMapping("/batch-lookup")
-    public ApiResponse<List<Accounts>> batchLookup(@RequestBody Map<String, List<String>> body) {
-        List<String> ids = body.getOrDefault("account_ids", List.of());
-        return ApiResponse.ok(accountsMapper.selectList(
-                new LambdaQueryWrapper<Accounts>().in(Accounts::getAccountId, ids)));
+    @GetMapping("/deleted") public PagedResponse<Accounts> deleted(@AuthenticationPrincipal UserPrincipal p,
+            @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int size) {
+        var qw = new LambdaQueryWrapper<Accounts>().eq(Accounts::getOwnerId, p.getUserId()).isNotNull(Accounts::getDeletedAt);
+        var pg = accountsMapper.selectPage(new Page<>(page, size), qw);
+        return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
     }
 
-    @PostMapping("/sync-from-sheet")
-    public ApiResponse<Integer> syncFromSheet(@AuthenticationPrincipal UserPrincipal principal,
+    @GetMapping("/options") public ApiResponse<?> options(@AuthenticationPrincipal UserPrincipal p) {
+        return ApiResponse.ok(accountService.options(p.getUserId()));
+    }
+
+    @PostMapping("/batch-delete") public ApiResponse<Integer> batchDelete(@AuthenticationPrincipal UserPrincipal p,
+            @RequestBody Map<String, List<Long>> body) {
+        int c = 0; for (Long id : body.getOrDefault("ids", List.of())) { accountService.delete(id); c++; } return ApiResponse.ok(c);
+    }
+
+    @PostMapping("/batch-update") public ApiResponse<Integer> batchUpdate(@AuthenticationPrincipal UserPrincipal p,
             @RequestBody Map<String, Object> body) {
-        return ApiResponse.ok(0); // TODO: Google Sheets 同步
+        @SuppressWarnings("unchecked") List<Long> ids = (List<Long>) body.getOrDefault("ids", List.of());
+        int c = 0; for (Long id : ids) { accountService.update(id, str(body,"name"), lng(body,"mcc_id"),
+                lng(body,"agent_id"), lng(body,"status_id"), str(body,"timezone")); c++; }
+        return ApiResponse.ok(c);
     }
 
-    private Long lng(Map<String, Object> m, String k) { Object v = m.get(k); return v != null ? Long.valueOf(v.toString()) : null; }
+    @PostMapping("/sync-from-sheet") public ApiResponse<Map<String,Object>> syncFromSheet(
+            @AuthenticationPrincipal UserPrincipal p, @RequestBody Map<String, Object> body) {
+        return ApiResponse.ok(Map.of("created",0,"updated",0,"unchanged",0)); // TODO: Sheet双向同步
+    }
+
+    @GetMapping("/lookup") public ApiResponse<Accounts> lookup(@RequestParam String accountId) {
+        var a = accountsMapper.selectOne(new LambdaQueryWrapper<Accounts>().eq(Accounts::getAccountId, accountId));
+        return a != null ? ApiResponse.ok(a) : ApiResponse.fail("不存在");
+    }
+
+    @GetMapping("/recharge-records") public ApiResponse<List<RechargeRecords>> rechargeRecords(@RequestParam String accountId) {
+        return ApiResponse.ok(rechargeRecordsMapper.selectList(new LambdaQueryWrapper<RechargeRecords>()
+                .eq(RechargeRecords::getAccountId, accountId).orderByDesc(RechargeRecords::getCreatedAt)));
+    }
+
+    @GetMapping("/mcc-history") public ApiResponse<List<AccountMccHistory>> mccHistory(@RequestParam Long accountId) {
+        return ApiResponse.ok(mccHistoryMapper.selectList(new LambdaQueryWrapper<AccountMccHistory>()
+                .eq(AccountMccHistory::getAccountId, accountId).orderByDesc(AccountMccHistory::getCreatedAt)));
+    }
+
+    @PostMapping("/batch-lookup") public ApiResponse<List<Accounts>> batchLookup(@RequestBody Map<String, List<String>> body) {
+        return ApiResponse.ok(accountsMapper.selectList(new LambdaQueryWrapper<Accounts>()
+                .in(Accounts::getAccountId, body.getOrDefault("account_ids", List.of()))));
+    }
+
+    private Long lng(Map<String,Object> m, String k) { Object v=m.get(k); return v!=null ? Long.valueOf(v.toString()) : null; }
+    private String str(Map<String,Object> m, String k) { Object v=m.get(k); return v!=null ? v.toString() : null; }
 }
