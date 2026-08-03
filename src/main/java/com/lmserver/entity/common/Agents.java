@@ -13,14 +13,18 @@ import lombok.NoArgsConstructor;
 public class Agents {
 
         
+    /** 主键ID */
     private Long id;
 
+    /** 名称 */
     private String name;
 
     @TableField("owner_id")
+    /** 归属用户ID */
     private Long ownerId;
 
     @TableField("created_at")
+    /** 创建时间 */
     private LocalDateTime createdAt;
 
 }

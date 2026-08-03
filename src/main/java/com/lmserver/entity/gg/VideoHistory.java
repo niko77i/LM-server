@@ -13,19 +13,25 @@ import lombok.NoArgsConstructor;
 public class VideoHistory {
 
         
+    /** 主键ID */
     private Long id;
 
     @TableField("package")
+    /** 包名称 */
     private String pkg;
 
+    /** 名称 */
     private String name;
 
+    /** 设置JSON */
     private String settings;
 
     @TableField("created_at")
+    /** 创建时间 */
     private LocalDateTime createdAt;
 
     @TableField("updated_at")
+    /** 更新时间 */
     private LocalDateTime updatedAt;
 
 }

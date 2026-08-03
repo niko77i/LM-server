@@ -11,8 +11,10 @@ import lombok.NoArgsConstructor;
 public class Config {
 
     @TableId
+    /** 键 */
     private String key;
 
+    /** 值(JSON) */
     private String value;
 
 }

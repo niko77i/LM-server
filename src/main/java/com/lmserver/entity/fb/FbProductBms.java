@@ -11,12 +11,15 @@ import lombok.NoArgsConstructor;
 public class FbProductBms {
 
         
+    /** 主键ID */
     private Long id;
 
     @TableField("product_id")
+    /** 产品ID */
     private Long productId;
 
     @TableField("bm_id")
+    /** BM ID */
     private Long bmId;
 
 }

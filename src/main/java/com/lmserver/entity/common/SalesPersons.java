@@ -13,16 +13,21 @@ import lombok.NoArgsConstructor;
 public class SalesPersons {
 
         
+    /** 主键ID */
     private Long id;
 
+    /** 名称 */
     private String name;
 
     @TableField("owner_id")
+    /** 归属用户ID */
     private Long ownerId;
 
+    /** 所属平台: gg/fb */
     private String platform;
 
     @TableField("created_at")
+    /** 创建时间 */
     private LocalDateTime createdAt;
 
 }

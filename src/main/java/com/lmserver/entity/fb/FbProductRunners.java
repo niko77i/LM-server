@@ -11,8 +11,10 @@ import lombok.NoArgsConstructor;
 public class FbProductRunners {
 
     @TableField("product_id")
+    /** 产品ID */
     private Long productId;
 
     @TableField("user_id")
+    /** 用户ID */
     private Long userId;
 }

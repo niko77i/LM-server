@@ -12,9 +12,11 @@ public class Tags {
 
         @TableId
     @TableField("`key`")
+    /** 键 */
     private String key;
 
     @TableField("`value`")
+    /** 值(JSON) */
     private String value;
 
 }

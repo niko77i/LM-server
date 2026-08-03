@@ -13,20 +13,26 @@ import lombok.NoArgsConstructor;
 public class FbLines {
 
         
+    /** 主键ID */
     private Long id;
 
     @TableField("product_id")
+    /** 产品ID */
     private Long productId;
 
     @TableField("line_name")
+    /** 线名称 */
     private String lineName;
 
+    /** 链接地址 */
     private String link;
 
     @TableField("pixel_id")
+    /** Pixel ID */
     private Long pixelId;
 
     @TableField("created_at")
+    /** 创建时间 */
     private LocalDateTime createdAt;
 
 }
