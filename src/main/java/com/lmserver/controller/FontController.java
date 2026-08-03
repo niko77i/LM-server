@@ -5,6 +5,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -43,5 +45,16 @@ public class FontController {
         File f = new File(FONT_DIR, name);
         if (f.exists()) f.delete();
         return ApiResponse.ok();
+    }
+
+    @GetMapping("/download/{name}")
+    public void download(@PathVariable String name, HttpServletResponse resp) throws IOException {
+        File f = new File(FONT_DIR, name);
+        if (!f.exists()) { resp.sendError(404); return; }
+        resp.setContentType("application/octet-stream");
+        resp.setHeader("Content-Disposition", "attachment; filename=\"" + name + "\"");
+        try (FileInputStream in = new FileInputStream(f); OutputStream out = resp.getOutputStream()) {
+            in.transferTo(out);
+        }
     }
 }
