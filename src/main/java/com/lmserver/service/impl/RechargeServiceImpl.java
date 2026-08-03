@@ -29,6 +29,7 @@ public class RechargeServiceImpl implements RechargeService {
     private final RechargeRecordsMapper mapper;
     private final SheetsSyncLogMapper syncLogMapper;
     @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @org.springframework.beans.factory.annotation.Qualifier("ggAsyncExecutor")
     private ThreadPoolTaskExecutor taskExecutor;
 
     @Override
