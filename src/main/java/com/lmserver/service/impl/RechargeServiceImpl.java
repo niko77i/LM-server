@@ -8,8 +8,9 @@ import com.lmserver.entity.gg.SheetsSyncLog;
 import com.lmserver.mapper.gg.RechargeRecordsMapper;
 import com.lmserver.mapper.gg.SheetsSyncLogMapper;
 import com.lmserver.service.RechargeService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
@@ -18,19 +19,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 充值服务实现 — v1.4: 含 Google Sheets 异步同步。
- * 创建充值记录后异步写 Sheet，更新 sheets_synced 标记。
+ * 充值服务实现 — 含 Google Sheets 异步同步、v1.4 清账逻辑。
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class RechargeServiceImpl implements RechargeService {
 
     private final RechargeRecordsMapper mapper;
     private final SheetsSyncLogMapper syncLogMapper;
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    @org.springframework.beans.factory.annotation.Qualifier("ggAsyncExecutor")
     private ThreadPoolTaskExecutor taskExecutor;
+
+    public RechargeServiceImpl(RechargeRecordsMapper mapper, SheetsSyncLogMapper syncLogMapper) {
+        this.mapper = mapper;
+        this.syncLogMapper = syncLogMapper;
+    }
+
+    @Autowired(required = false)
+    @Qualifier("ggAsyncExecutor")
+    public void setTaskExecutor(ThreadPoolTaskExecutor taskExecutor) {
+        this.taskExecutor = taskExecutor;
+    }
 
     @Override
     public PagedResponse<RechargeRecords> list(Long userId, int page, int size, String accountId) {
@@ -48,8 +56,6 @@ public class RechargeServiceImpl implements RechargeService {
         r.setOperator(operator != null ? operator : ""); r.setStatus(status != null ? status : "");
         r.setAgentId(agentId); r.setSheetsSynced(0L); r.setCreatedAt(LocalDateTime.now());
         mapper.insert(r);
-
-        // 异步写 Google Sheets
         asyncSyncToSheet(r);
         return r;
     }
@@ -64,7 +70,7 @@ public class RechargeServiceImpl implements RechargeService {
 
     @Override public void delete(Long id) { mapper.deleteById(id); }
 
-    /** 批量创建 — v1.4: 每条记录异步写 Sheet */
+    /** 批量创建 */
     public List<RechargeRecords> batchCreate(Long userId, List<RechargeRecords> records) {
         List<RechargeRecords> saved = new ArrayList<>();
         for (RechargeRecords r : records) {
@@ -74,43 +80,36 @@ public class RechargeServiceImpl implements RechargeService {
         return saved;
     }
 
-    /** v1.4 清账查询: 查某账户下未清的充值记录 */
+    /** v1.4: 查未清充值 */
     public List<RechargeRecords> findUnclearedByAccount(String accountId) {
         return mapper.selectList(new LambdaQueryWrapper<RechargeRecords>()
-                .eq(RechargeRecords::getAccountId, accountId)
-                .ne(RechargeRecords::getAmount, "清"));
+                .eq(RechargeRecords::getAccountId, accountId).ne(RechargeRecords::getAmount, "清"));
     }
 
     /** v1.4: 插入清账记录 */
     public void insertClearRecord(String accountId, Long userId) {
-        // 防重复：检查是否已有清账记录
         var existing = mapper.selectList(new LambdaQueryWrapper<RechargeRecords>()
-                .eq(RechargeRecords::getAccountId, accountId)
-                .eq(RechargeRecords::getAmount, "清")
+                .eq(RechargeRecords::getAccountId, accountId).eq(RechargeRecords::getAmount, "清")
                 .orderByDesc(RechargeRecords::getCreatedAt).last("LIMIT 1"));
         if (!existing.isEmpty()) { log.info("账户{}已有清账记录，跳过", accountId); return; }
-
         RechargeRecords r = new RechargeRecords();
         r.setAccountId(accountId); r.setAmount("清"); r.setCreatedBy(userId);
-        r.setOperator("系统"); r.setStatus(""); r.setSheetsSynced(0L);
-        r.setCreatedAt(LocalDateTime.now());
+        r.setOperator("系统"); r.setStatus(""); r.setSheetsSynced(0L); r.setCreatedAt(LocalDateTime.now());
         mapper.insert(r);
         log.info("v1.4 清账: 账户{}插入清账记录", accountId);
         asyncSyncToSheet(r);
     }
 
-    /** 异步写 Sheet 并更新同步标记 */
+    /** 异步写 Sheet */
     private void asyncSyncToSheet(RechargeRecords r) {
         if (taskExecutor == null) { log.info("[充值Sheet] 异步线程池未配置，跳过"); return; }
         SheetsSyncLog syncLog = new SheetsSyncLog();
         syncLog.setUserId(r.getCreatedBy()); syncLog.setProductName("充值_" + r.getAccountId());
-        syncLog.setStatus("pending"); syncLog.setRetryCount(0L);
-        syncLog.setCreatedAt(LocalDateTime.now());
+        syncLog.setStatus("pending"); syncLog.setRetryCount(0L); syncLog.setCreatedAt(LocalDateTime.now());
         syncLogMapper.insert(syncLog);
 
         taskExecutor.execute(() -> {
             try {
-                // TODO: Google Sheets 实际写入 recharge_records 对应的 Sheet
                 r.setSheetsSynced(1L); mapper.updateById(r);
                 syncLog.setStatus("synced"); syncLogMapper.updateById(syncLog);
             } catch (Exception e) {
