@@ -44,6 +44,7 @@ public class SecurityConfig {
                     "/actuator/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET,
+                    "/api/fonts/**",
                     "/api/video/download", "/api/video/progress", "/api/image"
                 ).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS).permitAll()
