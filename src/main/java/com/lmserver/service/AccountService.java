@@ -9,8 +9,10 @@
 package com.lmserver.service;
 
 import com.lmserver.dto.response.PagedResponse;
+import com.lmserver.dto.response.SyncResult;
 import com.lmserver.entity.gg.Accounts;
 import java.util.List;
+import java.util.Map;
 public interface AccountService {
     PagedResponse<Accounts> list(Long ownerId, int page, int size, String search, Long statusId, Long mccId, Long agentId);
     Accounts getById(Long id);
@@ -20,4 +22,7 @@ public interface AccountService {
     List<Accounts> options(Long ownerId);
     /** v1.4: 账户状态变更时触发清账 */
     void tryClearAccount(Long accountId, Long operatorId, String newStatus);
+
+    /** v1.5: Sheet双向同步 */
+    SyncResult syncFromSheet(Long userId, String spreadsheetId, boolean dryRun);
 }

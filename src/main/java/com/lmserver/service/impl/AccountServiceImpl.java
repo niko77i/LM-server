@@ -5,17 +5,19 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lmserver.dto.response.PagedResponse;
+import com.lmserver.dto.response.SyncResult;
 import com.lmserver.entity.gg.Accounts;
 import com.lmserver.mapper.gg.AccountsMapper;
 import com.lmserver.service.AccountService;
+import com.lmserver.service.GoogleSheetsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -85,4 +87,69 @@ public class AccountServiceImpl implements AccountService {
 
     @org.springframework.beans.factory.annotation.Autowired
     private com.lmserver.service.impl.RechargeServiceImpl rechargeService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private GoogleSheetsService sheetsService;
+
+    /** v1.5 Sheet双向同步 */
+    @Override public SyncResult syncFromSheet(Long userId, String spreadsheetId, boolean dryRun) {
+        List<Map<String, Object>> toCreate = new ArrayList<>();
+        List<Map<String, Object>> toUpdate = new ArrayList<>();
+        List<Map<String, Object>> unchanged = new ArrayList<>();
+        int created = 0, updated = 0;
+
+        try {
+            // 1. 读取 Sheet 数据 (A-H列: 名称|账户ID|时区|代理|状态|备注|获取日期|是否解绑)
+            var rows = sheetsService.read(spreadsheetId, "A:H");
+            if (rows == null || rows.isEmpty()) return SyncResult.builder().dryRun(dryRun).build();
+
+            // 2. 解析 Sheet 行
+            for (var row : rows) {
+                if (row.size() < 2 || row.get(0) == null || row.get(1) == null) continue;
+                String name = row.get(0).toString().trim();
+                String accountId = row.get(1).toString().trim();
+                String unbind = row.size() > 7 && row.get(7) != null ? row.get(7).toString().trim() : "";
+
+                // 跳过 H列="解绑" 的行
+                if ("解绑".equals(unbind)) continue;
+                if (name.isEmpty() || accountId.isEmpty()) continue;
+
+                Map<String, Object> sheetRecord = new HashMap<>();
+                sheetRecord.put("name", name); sheetRecord.put("account_id", accountId);
+
+                // 3. 查找 DB 中是否有该账户
+                var existing = accountsMapper.selectList(new LambdaQueryWrapper<Accounts>()
+                        .eq(Accounts::getAccountId, accountId));
+                if (existing.isEmpty()) {
+                    toCreate.add(sheetRecord);
+                } else {
+                    sheetRecord.put("db_id", existing.get(0).getId());
+                    toUpdate.add(sheetRecord);
+                }
+            }
+
+            // 4. dry_run 只返回差异
+            if (dryRun) {
+                return SyncResult.builder().toCreate(toCreate).toUpdate(toUpdate)
+                        .unchanged(unchanged).dryRun(true).build();
+            }
+
+            // 5. 执行创建+更新
+            for (var r : toCreate) {
+                create(userId, (String) r.get("name"), (String) r.get("account_id"), null, null, null, "");
+                created++;
+            }
+            for (var r : toUpdate) {
+                update(lng(r.get("db_id")), (String) r.get("name"), null, null, null, null);
+                updated++;
+            }
+
+        } catch (Exception e) {
+            log.error("v1.5 Sheet同步失败: {}", e.getMessage());
+        }
+        return SyncResult.builder().toCreate(toCreate).toUpdate(toUpdate).unchanged(unchanged)
+                .created(created).updated(updated).dryRun(false).build();
+    }
+
+    private Long lng(Object v) { return v != null ? Long.valueOf(v.toString()) : null; }
 }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lmserver.dto.response.ApiResponse;
 import com.lmserver.dto.response.PagedResponse;
+import com.lmserver.dto.response.SyncResult;
 import com.lmserver.entity.gg.AccountMccHistory;
 import com.lmserver.entity.gg.Accounts;
 import com.lmserver.entity.gg.RechargeRecords;
@@ -102,9 +103,12 @@ public class AccountController {
         return ApiResponse.ok(c);
     }
 
-    @PostMapping("/sync-from-sheet") public ApiResponse<Map<String,Object>> syncFromSheet(
+    @PostMapping("/sync-from-sheet") public ApiResponse<SyncResult> syncFromSheet(
             @AuthenticationPrincipal UserPrincipal p, @RequestBody Map<String, Object> body) {
-        return ApiResponse.ok(Map.of("created",0,"updated",0,"unchanged",0)); // TODO: Sheet双向同步
+        String spreadsheetId = (String) body.get("spreadsheet_id");
+        boolean dryRun = Boolean.TRUE.equals(body.get("dry_run"));
+        if (spreadsheetId == null) return ApiResponse.fail("缺少spreadsheet_id");
+        return ApiResponse.ok(accountService.syncFromSheet(p.getUserId(), spreadsheetId, dryRun));
     }
 
     @GetMapping("/lookup") public ApiResponse<Accounts> lookup(@RequestParam String accountId) {
