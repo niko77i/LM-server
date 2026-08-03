@@ -60,11 +60,4 @@ public class AdminController {
         return ApiResponse.ok();
     }
 
-    @GetMapping("/data/stats")
-    @PreAuthorize("hasAnyRole('DEVELOPER','ADMIN')")
-    public ApiResponse<Map<String, Long>> stats() {
-        Map<String, Long> s = new java.util.HashMap<>();
-        s.put("users", usersMapper.selectCount(null));
-        return ApiResponse.ok(s);
-    }
 }
