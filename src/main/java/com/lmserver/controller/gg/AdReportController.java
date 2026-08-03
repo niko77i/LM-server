@@ -2,19 +2,23 @@ package com.lmserver.controller.gg;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmserver.dto.response.ApiResponse;
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.gg.AdReports;
+import com.lmserver.entity.common.Config;
+import com.lmserver.mapper.common.ConfigMapper;
 import com.lmserver.mapper.gg.AdReportsMapper;
 import com.lmserver.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 /**
  * GG 广告报告控制器 — /api/ad-reports/*，GG广告投放数据的CRUD
  */
@@ -25,6 +29,9 @@ import java.util.Map;
 public class AdReportController {
 
     private final AdReportsMapper mapper;
+    private final ConfigMapper configMapper;
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @GetMapping("/list")
     /** 分页列表查询 — 支持多条件筛选 */
@@ -104,7 +111,36 @@ public class AdReportController {
     @PostMapping("/analysis")
     public ApiResponse<String> analysis(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, String> body) {
-        return ApiResponse.ok("分析: " + body.getOrDefault("question","")); // TODO: LLM
+        String question = body.getOrDefault("question", "");
+        // 从数据库读取 AI 配置
+        Config aiConfig = configMapper.selectById("ai_analysis");
+        if (aiConfig == null || aiConfig.getValue() == null) return ApiResponse.fail("AI配置不存在");
+        try {
+            Map<String, Object> cfg = objectMapper.readValue(aiConfig.getValue(), Map.class);
+            String endpoint = (String) cfg.get("endpoint");
+            String apiKey = (String) cfg.get("api_key");
+            String model = (String) cfg.getOrDefault("model", "deepseek-v4-flash");
+            // 获取用户最近的报告数据作为上下文
+            var reports = mapper.selectList(new LambdaQueryWrapper<AdReports>()
+                    .eq(AdReports::getUserId, principal.getUserId()).orderByDesc(AdReports::getReportDate).last("LIMIT 50"));
+            StringBuilder ctx = new StringBuilder("报告数据:\n");
+            for (var r : reports) ctx.append(String.format("%s %s cost:%.2f clicks:%d\n",
+                    r.getReportDate(), r.getProductName(), r.getCost() != null ? r.getCost() : 0,
+                    r.getClicks() != null ? r.getClicks() : 0));
+            // 调用 LLM
+            Map<String, Object> reqBody = Map.of("model", model, "messages", List.of(
+                    Map.of("role", "system", "content", "你是广告投放分析助手。根据数据回答问题。"),
+                    Map.of("role", "user", "content", ctx + "\n问题: " + question)));
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(apiKey);
+            ResponseEntity<Map> resp = restTemplate.exchange(endpoint, HttpMethod.POST,
+                    new HttpEntity<>(reqBody, headers), Map.class);
+            Map<String, Object> respBody = resp.getBody();
+            List<Map<String, Object>> choices = respBody != null ? (List<Map<String, Object>>) respBody.get("choices") : List.of();
+            String answer = !choices.isEmpty() ? (String) ((Map<String, Object>) choices.get(0).get("message")).get("content") : "无响应";
+            return ApiResponse.ok(answer);
+        } catch (Exception e) { return ApiResponse.fail("AI分析失败: " + e.getMessage()); }
     }
 
     @PostMapping("/dedup-check")
