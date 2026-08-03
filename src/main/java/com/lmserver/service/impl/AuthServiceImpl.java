@@ -80,6 +80,54 @@ public class AuthServiceImpl implements AuthService {
         return u != null ? toUserInfo(u) : null;
     }
 
+    @Override
+    public boolean changePassword(Long userId, String oldPwd, String newPwd) {
+        Users u = usersMapper.selectById(userId);
+        if (u == null || !passwordEncoder.matches(oldPwd, u.getPassword())) return false;
+        u.setPassword(passwordEncoder.encode(newPwd));
+        u.setTokenVersion((u.getTokenVersion() != null ? u.getTokenVersion() : 0) + 1);
+        usersMapper.updateById(u);
+        log.info("用户 {} 密码已修改, tokenVersion++", u.getUsername());
+        return true;
+    }
+
+    @Override
+    public void updateProfile(Long userId, String displayName) {
+        Users u = usersMapper.selectById(userId);
+        if (u != null) { u.setDisplayName(displayName); usersMapper.updateById(u); }
+    }
+
+    @Override
+    public void updateCustomName(Long userId, String customName) {
+        Users u = usersMapper.selectById(userId);
+        if (u != null) { u.setCustomName(customName); usersMapper.updateById(u); }
+    }
+
+    @Override
+    public void updateEmail(Long userId, String email) {
+        Users u = usersMapper.selectById(userId);
+        if (u != null) { u.setEmail(email); usersMapper.updateById(u); }
+    }
+
+    @Override
+    public void updateTelegram(Long userId, String telegramUsername) {
+        Users u = usersMapper.selectById(userId);
+        if (u != null) { u.setTelegramUsername(telegramUsername); usersMapper.updateById(u); }
+    }
+
+    @Override
+    public java.util.List<java.util.Map<String, Object>> getUserNames(com.lmserver.security.UserPrincipal principal) {
+        var users = usersMapper.selectList(null);
+        return users.stream().map(u -> {
+            java.util.Map<String, Object> m = new java.util.HashMap<>();
+            m.put("id", u.getId());
+            m.put("username", u.getUsername());
+            m.put("display_name", u.getDisplayName());
+            m.put("platform", u.getPlatform());
+            return m;
+        }).toList();
+    }
+
     private UserInfo toUserInfo(Users u) {
         return UserInfo.builder().id(u.getId()).username(u.getUsername())
                 .role(u.getRole()).platform(u.getPlatform()).displayName(u.getDisplayName()).build();

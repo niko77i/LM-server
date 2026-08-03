@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 /**
  * 产品管理控制器 — /api/products/*，GG平台产品的完整CRUD+下拉选项
@@ -79,6 +80,17 @@ public class ProductController {
     public ApiResponse<?> options(@AuthenticationPrincipal UserPrincipal principal) {
         return ApiResponse.ok(productService.options(principal.getUserId()));
     }
+
+    // ──── 在跑人员 ────
+
+    @GetMapping("/{productId}/runners")
+    public ApiResponse<List<Map<String, Object>>> listRunners(@PathVariable Long productId) { return ApiResponse.ok(List.of()); }
+
+    @PostMapping("/{productId}/runners")
+    public ApiResponse<Void> addRunner(@PathVariable Long productId, @RequestBody Map<String, Long> body) { return ApiResponse.ok(); }
+
+    @DeleteMapping("/{productId}/runners/{userId}")
+    public ApiResponse<Void> removeRunner(@PathVariable Long productId, @PathVariable Long userId) { return ApiResponse.ok(); }
 
     private String str(Map<String, Object> m, String k) { Object v = m.get(k); return v != null ? v.toString() : null; }
     private Long lng(Map<String, Object> m, String k) { Object v = m.get(k); return v != null ? Long.valueOf(v.toString()) : null; }

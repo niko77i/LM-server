@@ -1,41 +1,33 @@
-/**
- * 认证服务接口 — 登录/注册/Token刷新/获取当前用户
- */
-
-/**
- * 认证服务接口 — 登录/注册/Token刷新/获取当前用户
- */
-
 package com.lmserver.service;
 
 import com.lmserver.dto.response.LoginResponse;
+import com.lmserver.security.UserPrincipal;
+
+import java.util.List;
+import java.util.Map;
 
 /**
- * 认证服务接口。
+ * 认证服务接口 — 登录/注册/Token/个人信息/密码。
  */
 public interface AuthService {
 
-    /**
-     * 用户登录。
-     * @return 登录结果（含 Token 和用户信息），失败返回 null
-     */
     LoginResponse login(String username, String password);
 
-    /**
-     * 用户注册。
-     * @return 新用户信息
-     */
     LoginResponse.UserInfo register(String username, String password, String displayName);
 
-    /**
-     * 刷新 Token。
-     * @param refreshToken 有效的 Refresh Token
-     * @return 新的 Access Token，失败返回 null
-     */
     String refreshToken(String refreshToken);
 
-    /**
-     * 获取当前用户信息。
-     */
     LoginResponse.UserInfo getCurrentUser(Long userId);
+
+    boolean changePassword(Long userId, String oldPwd, String newPwd);
+
+    void updateProfile(Long userId, String displayName);
+
+    void updateCustomName(Long userId, String customName);
+
+    void updateEmail(Long userId, String email);
+
+    void updateTelegram(Long userId, String telegramUsername);
+
+    List<Map<String, Object>> getUserNames(UserPrincipal principal);
 }

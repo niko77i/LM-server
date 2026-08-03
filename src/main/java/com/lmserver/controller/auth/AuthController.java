@@ -11,14 +11,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-/**
- * 认证控制器 — /api/auth/*，处理登录/注册/Token刷新/个人信息，login和register公开访问
- */
+
+import java.util.List;
+import java.util.Map;
 
 /**
- * 认证控制器 — /api/auth/*，处理登录/注册/Token刷新/个人信息，login和register公开访问
+ * 认证控制器 — /api/auth/*。12 个接口完整实现。
  */
-
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
@@ -28,45 +27,80 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    /** 用户登录 — 验证用户名密码，成功返回 JWT Token 和用户信息 */
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest req) {
         LoginResponse result = authService.login(req.getUsername(), req.getPassword());
-        if (result == null) {
-            return ApiResponse.fail("用户名或密码错误，或账户已被禁用");
-        }
+        if (result == null) return ApiResponse.fail("用户名或密码错误，或账户已被禁用");
         return ApiResponse.ok(result);
     }
 
     @PostMapping("/register")
-    /** 用户注册 — 创建新账户，默认角色 user，平台 gg */
     public ApiResponse<LoginResponse.UserInfo> register(@Valid @RequestBody RegisterRequest req) {
-        LoginResponse.UserInfo user = authService.register(
-                req.getUsername(), req.getPassword(), req.getDisplayName());
-        if (user == null) {
-            return ApiResponse.fail("注册失败，用户名可能已存在");
-        }
+        LoginResponse.UserInfo user = authService.register(req.getUsername(), req.getPassword(), req.getDisplayName());
+        if (user == null) return ApiResponse.fail("注册失败，用户名可能已存在");
         return ApiResponse.ok(user);
     }
 
     @PostMapping("/refresh")
-    /** 刷新 Token — 用 Refresh Token 换取新的 Access Token */
     public ApiResponse<String> refresh(@RequestHeader("Authorization") String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (authHeader == null || !authHeader.startsWith("Bearer "))
             return ApiResponse.fail("缺少 Refresh Token");
-        }
         String newToken = authService.refreshToken(authHeader.substring(7));
-        if (newToken == null) {
-            return ApiResponse.fail("Refresh Token 无效或已过期");
-        }
+        if (newToken == null) return ApiResponse.fail("Refresh Token 无效或已过期");
         return ApiResponse.ok(newToken);
     }
 
     @GetMapping("/me")
-    /** 获取当前用户信息 — 从 JWT 解析用户 ID 后查询数据库 */
     public ApiResponse<LoginResponse.UserInfo> me(@AuthenticationPrincipal UserPrincipal principal) {
         if (principal == null) return ApiResponse.fail("未认证");
         LoginResponse.UserInfo user = authService.getCurrentUser(principal.getUserId());
         if (user == null) return ApiResponse.fail("用户不存在");
         return ApiResponse.ok(user);
+    }
+
+    /** 修改密码 */
+    @PutMapping("/password")
+    public ApiResponse<Void> changePassword(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, String> body) {
+        boolean ok = authService.changePassword(principal.getUserId(),
+                body.get("old_password"), body.get("new_password"));
+        return ok ? ApiResponse.ok() : ApiResponse.fail("旧密码错误");
+    }
+
+    /** 修改显示名称 */
+    @PutMapping("/profile")
+    public ApiResponse<Void> updateProfile(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, String> body) {
+        authService.updateProfile(principal.getUserId(), body.get("display_name"));
+        return ApiResponse.ok();
+    }
+
+    /** 修改自定义名称 */
+    @PutMapping("/custom-name")
+    public ApiResponse<Void> updateCustomName(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, String> body) {
+        authService.updateCustomName(principal.getUserId(), body.get("custom_name"));
+        return ApiResponse.ok();
+    }
+
+    /** 修改邮箱 */
+    @PutMapping("/email")
+    public ApiResponse<Void> updateEmail(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, String> body) {
+        authService.updateEmail(principal.getUserId(), body.get("email"));
+        return ApiResponse.ok();
+    }
+
+    /** 修改 Telegram 用户名 */
+    @PutMapping("/telegram-username")
+    public ApiResponse<Void> updateTelegram(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, String> body) {
+        authService.updateTelegram(principal.getUserId(), body.get("telegram_username"));
+        return ApiResponse.ok();
+    }
+
+    /** 获取所有用户名列表（下拉选择用） */
+    @GetMapping("/names")
+    public ApiResponse<List<Map<String, Object>>> userNames(@AuthenticationPrincipal UserPrincipal principal) {
+        return ApiResponse.ok(authService.getUserNames(principal));
     }
 }
