@@ -33,4 +33,10 @@ public class AuditController {
         var pg = mapper.selectPage(new Page<>(page, size), qw);
         return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
     }
+
+    @GetMapping("/{id}")
+    public ApiResponse<AuditLog> detail(@PathVariable Long id) {
+        AuditLog log = mapper.selectById(id);
+        return log != null ? ApiResponse.ok(log) : ApiResponse.fail("不存在");
+    }
 }

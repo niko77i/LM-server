@@ -46,4 +46,7 @@ public class ConfigController {
         }
         return ApiResponse.ok();
     }
+
+    @DeleteMapping("/key/{key}")
+    public ApiResponse<Void> delete(@PathVariable String key) { mapper.deleteById(key); return ApiResponse.ok(); }
 }
