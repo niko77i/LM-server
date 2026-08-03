@@ -192,4 +192,17 @@ public class VideoController {
         new File("temp/music/" + name).delete();
         return ApiResponse.ok();
     }
+
+    @GetMapping("/video/download/{taskId}")
+    public void downloadVideo(@PathVariable String taskId, jakarta.servlet.http.HttpServletResponse resp) throws java.io.IOException {
+        var list = videoTasksMapper.selectList(new LambdaQueryWrapper<VideoTasks>().eq(VideoTasks::getTaskId, taskId));
+        if (list.isEmpty()) { resp.sendError(404); return; }
+        String path = list.get(0).getOutputPath();
+        if (path == null || path.isEmpty()) { resp.sendError(404); return; }
+        java.io.File f = new java.io.File(path);
+        if (!f.exists()) { resp.sendError(404); return; }
+        resp.setContentType("video/mp4");
+        resp.setHeader("Content-Disposition", "attachment; filename=\"" + f.getName() + "\"");
+        try (java.io.FileInputStream in = new java.io.FileInputStream(f)) { in.transferTo(resp.getOutputStream()); }
+    }
 }

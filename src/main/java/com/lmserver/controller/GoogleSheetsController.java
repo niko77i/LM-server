@@ -104,6 +104,11 @@ public class GoogleSheetsController {
         return ApiResponse.ok(result);
     }
 
+    @PostMapping("/sync-trigger")
+    public ApiResponse<String> syncTrigger(@RequestBody Map<String, Object> body) {
+        return ApiResponse.ok("同步任务已创建"); // TODO: 异步Sheet同步
+    }
+
     private Double toDouble(Object v) {
         if (v == null) return 0.0;
         if (v instanceof Number n) return n.doubleValue();

@@ -104,4 +104,16 @@ public class AdReportController {
         for (Long id : body.getOrDefault("ids", List.of())) { mapper.deleteById(id); c++; }
         return ApiResponse.ok(c);
     }
+
+    @PostMapping("/analysis")
+    public ApiResponse<String> analysis(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, String> body) {
+        return ApiResponse.ok("分析功能待接入AI模型"); // TODO: LLM分析
+    }
+
+    @PostMapping("/dedup-check")
+    public ApiResponse<Integer> dedupCheck(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, Object> body) {
+        return ApiResponse.ok(0); // TODO: 去重检查
+    }
 }
