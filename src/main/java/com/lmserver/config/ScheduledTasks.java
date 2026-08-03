@@ -34,8 +34,8 @@ public class ScheduledTasks {
         log.info("[定时任务] 每周清理完成");
     }
 
-    /** 每日上午9点执行掉包检测 */
-    @Scheduled(cron = "0 0 9 * * *")
+    /** 每小时执行掉包检测 */
+    @Scheduled(cron = "0 0 * * * *")
     public void checkDelist() {
         log.info("[定时任务] 掉包检测开始");
         // TODO: 遍历活跃产品，Jsoup 检查 Google Play 下架

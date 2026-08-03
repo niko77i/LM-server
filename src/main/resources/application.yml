@@ -81,6 +81,15 @@ notification:
     bot-token: 8705623419:AAHTV7MUQ9xlYe2FGzwgJFJI6AI_afeu07Y
     chat-id: "-5220122275"
 
+# FFmpeg
+ffmpeg:
+  path: ffmpeg
+
+# 定时任务
+scheduler:
+  weekly-cleanup: "0 0 2 * * SUN"
+  delist-check: "0 0 * * * *"
+
 # Google Sheets
 google:
   sheets:
