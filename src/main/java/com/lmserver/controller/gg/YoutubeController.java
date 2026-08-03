@@ -135,4 +135,19 @@ public class YoutubeController {
         else { t.setValue(body.get("value")); tagsMapper.updateById(t); }
         return ApiResponse.ok();
     }
+
+    @GetMapping("/export")
+    public void export(@AuthenticationPrincipal UserPrincipal principal,
+            jakarta.servlet.http.HttpServletResponse resp) throws java.io.IOException {
+        var list = videosMapper.selectList(
+                new LambdaQueryWrapper<Videos>().eq(Videos::getOwnerId, principal.getUserId()));
+        resp.setContentType("text/csv;charset=UTF-8");
+        resp.setHeader("Content-Disposition", "attachment; filename=youtube-videos.csv");
+        var w = resp.getWriter();
+        w.write("ID,标题,URL,地区,频道,融帧,成效,审核,产品\n");
+        for (Videos v : list) w.write(String.format("%s,\"%s\",%s,%s,%s,%s,%s,%s,%s\n",
+                v.getId(), v.getTitle() != null ? v.getTitle().replace("\"", "\"\"") : "",
+                v.getUrl(), v.getRegion(), v.getChannelName(), v.getFrameType(),
+                v.getEffectiveness(), v.getReviewStatus(), v.getProductName()));
+    }
 }
