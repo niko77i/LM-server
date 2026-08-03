@@ -18,4 +18,6 @@ public interface AccountService {
     Accounts update(Long id, String name, Long mccId, Long agentId, Long statusId, String timezone);
     void delete(Long id);
     List<Accounts> options(Long ownerId);
+    /** v1.4: 账户状态变更时触发清账 */
+    void tryClearAccount(Long accountId, Long operatorId, String newStatus);
 }

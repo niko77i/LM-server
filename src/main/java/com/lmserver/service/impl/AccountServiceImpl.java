@@ -2,6 +2,8 @@ package com.lmserver.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.gg.Accounts;
 import com.lmserver.mapper.gg.AccountsMapper;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 @Slf4j
 @Service
@@ -65,4 +68,21 @@ public class AccountServiceImpl implements AccountService {
     @Override public List<Accounts> options(Long ownerId) {
         return accountsMapper.selectList(new LambdaQueryWrapper<Accounts>().eq(Accounts::getOwnerId, ownerId));
     }
+
+    /** v1.4 清账: 状态变为非存活时，检查并插入清账记录 */
+    @Override public void tryClearAccount(Long accountId, Long operatorId, String newStatus) {
+        Accounts a = accountsMapper.selectById(accountId);
+        if (a == null) return;
+        // 只有从"存活"变更为非存活状态时才清账
+        if ("存活".equals(newStatus) || a.getStatusId() == null) return;
+        String acctId = a.getAccountId();
+        log.info("v1.4 清账检查: 账户{} 状态变更, accountId={}", accountId, acctId);
+        var uncleared = rechargeService.findUnclearedByAccount(acctId);
+        if (!uncleared.isEmpty()) {
+            rechargeService.insertClearRecord(acctId, operatorId);
+        }
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.lmserver.service.impl.RechargeServiceImpl rechargeService;
 }
