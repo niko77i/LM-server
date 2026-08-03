@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 @TableName("scrape_cache")
 public class ScrapeCache {
 
-        @TableField("package_name")
     @TableId
     private String packageName;
 

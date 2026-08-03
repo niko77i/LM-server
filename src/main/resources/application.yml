@@ -32,9 +32,6 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: auto
-      logic-delete-field: deletedAt
-      logic-delete-value: "NOW()"
-      logic-not-delete-value: "NULL"
 
   # SMTP 邮件（QQ邮箱）
   mail:
