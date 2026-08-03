@@ -74,11 +74,11 @@ public class FbAdReportController {
                 r.getCostPerPurchase() != null ? r.getCostPerPurchase() : 0));
     }
 
+    private final com.lmserver.mapper.gg.SheetsSyncLogMapper syncLogMapper;
     @PostMapping("/sync-retry/{logId}")
     public ApiResponse<Void> syncRetry(@PathVariable Long logId) {
-        com.lmserver.mapper.gg.SheetsSyncLogMapper logMapper = null; // TODO: inject
-        var log = logMapper != null ? logMapper.selectById(logId) : null;
-        if (log != null) { log.setStatus("pending"); log.setRetryCount((log.getRetryCount() != null ? log.getRetryCount() : 0) + 1); logMapper.updateById(log); }
+        var log = syncLogMapper.selectById(logId);
+        if (log != null) { log.setStatus("pending"); log.setRetryCount((log.getRetryCount() != null ? log.getRetryCount() : 0) + 1); syncLogMapper.updateById(log); }
         return ApiResponse.ok();
     }
 }

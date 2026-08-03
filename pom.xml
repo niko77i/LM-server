@@ -138,6 +138,13 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- HTML解析 (替代Python BeautifulSoup) -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.17.2</version>
+        </dependency>
+
         <!-- API 文档 (Swagger/OpenAPI) -->
         <dependency>
             <groupId>org.springdoc</groupId>

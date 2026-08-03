@@ -44,9 +44,18 @@ public class ScrapeController {
     }
 
     @PostMapping("/trigger")
-    public ApiResponse<String> triggerScrape(@RequestBody Map<String, String> body) {
+    public ApiResponse<ScrapeCache> triggerScrape(@RequestBody Map<String, String> body,
+            @AuthenticationPrincipal UserPrincipal principal) {
         String url = body.get("url");
         if (url == null || url.isBlank()) return ApiResponse.fail("URL不能为空");
-        return ApiResponse.ok("抓取任务已提交: " + url); // TODO: Jsoup 抓取
+        try {
+            org.jsoup.Jsoup.connect(url).timeout(30000).get(); // 验证URL可访问
+            String pkgName = body.getOrDefault("package_name", url.replaceAll(".*id=", ""));
+            ScrapeCache cache = new ScrapeCache();
+            cache.setPackageName(pkgName); cache.setScrapedBy(principal.getUserId());
+            cache.setLastScraped(java.time.LocalDateTime.now());
+            scrapeCacheMapper.insert(cache);
+            return ApiResponse.ok(cache);
+        } catch (Exception e) { return ApiResponse.fail("抓取失败: " + e.getMessage()); }
     }
 }

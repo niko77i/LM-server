@@ -30,7 +30,8 @@ public class SheetsSyncLogController {
 
     @PostMapping("/retry/{id}")
     public ApiResponse<Void> retry(@PathVariable Long id) {
-        // TODO: 重新触发 Sheets 同步
+        var log = mapper.selectById(id);
+        if (log != null) { log.setStatus("pending"); log.setRetryCount((log.getRetryCount() != null ? log.getRetryCount() : 0) + 1); log.setUpdatedAt(java.time.LocalDateTime.now()); mapper.updateById(log); }
         return ApiResponse.ok();
     }
 }
