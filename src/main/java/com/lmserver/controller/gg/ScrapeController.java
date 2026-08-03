@@ -9,6 +9,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 图片抓取控制器 - Google Play 截图抓取与缓存。
@@ -48,5 +49,12 @@ public class ScrapeController {
             @AuthenticationPrincipal UserPrincipal principal) {
         scrapeCacheMapper.deleteById(packageName);
         return ApiResponse.ok();
+    }
+
+    @PostMapping("/trigger")
+    public ApiResponse<String> triggerScrape(@RequestBody Map<String, String> body) {
+        String url = body.get("url");
+        if (url == null || url.isBlank()) return ApiResponse.fail("URL不能为空");
+        return ApiResponse.ok("抓取任务已提交: " + url); // TODO: Jsoup 抓取
     }
 }
