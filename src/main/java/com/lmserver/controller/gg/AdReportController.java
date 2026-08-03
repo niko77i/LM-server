@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.Map;
 /**
  * GG 广告报告控制器 — /api/ad-reports/*，GG广告投放数据的CRUD
@@ -59,6 +61,38 @@ public class AdReportController {
     }
 
     @DeleteMapping("/{id}")
-    /** 删除记录 */
     public ApiResponse<Void> delete(@PathVariable Long id) { mapper.deleteById(id); return ApiResponse.ok(); }
+
+    @GetMapping("/export")
+    public void export(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(required = false) String productName, HttpServletResponse resp) throws IOException {
+        var qw = new LambdaQueryWrapper<AdReports>().eq(AdReports::getUserId, principal.getUserId());
+        if (productName != null && !productName.isBlank()) qw.eq(AdReports::getProductName, productName);
+        var list = mapper.selectList(qw);
+        resp.setContentType("text/csv;charset=UTF-8");
+        resp.setHeader("Content-Disposition", "attachment; filename=ad-reports.csv");
+        resp.getWriter().write("日期,产品,地区,账户,客户ID,广告系列,消耗,展示,点击,安装,应用内操作\n");
+        for (AdReports r : list) {
+            resp.getWriter().write(String.format("%s,%s,%s,%s,%s,%s,%.2f,%d,%d,%.0f,%.0f\n",
+                    r.getReportDate(), r.getProductName(), r.getRegion(), r.getAccount(),
+                    r.getCustomerId(), r.getCampaign(), r.getCost() != null ? r.getCost() : 0,
+                    r.getImpressions() != null ? r.getImpressions() : 0,
+                    r.getClicks() != null ? r.getClicks() : 0,
+                    r.getInstalls() != null ? r.getInstalls() : 0,
+                    r.getInAppActions() != null ? r.getInAppActions() : 0));
+        }
+    }
+
+    @GetMapping("/stats")
+    public ApiResponse<Map<String, Object>> stats(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(required = false) String productName) {
+        var qw = new LambdaQueryWrapper<AdReports>().eq(AdReports::getUserId, principal.getUserId());
+        if (productName != null && !productName.isBlank()) qw.eq(AdReports::getProductName, productName);
+        var list = mapper.selectList(qw);
+        double totalCost = list.stream().mapToDouble(r -> r.getCost() != null ? r.getCost() : 0).sum();
+        long totalImpr = list.stream().mapToLong(r -> r.getImpressions() != null ? r.getImpressions() : 0).sum();
+        long totalClicks = list.stream().mapToLong(r -> r.getClicks() != null ? r.getClicks() : 0).sum();
+        return ApiResponse.ok(Map.of("totalCost", totalCost, "totalImpressions", totalImpr,
+                "totalClicks", totalClicks, "recordCount", list.size()));
+    }
 }
