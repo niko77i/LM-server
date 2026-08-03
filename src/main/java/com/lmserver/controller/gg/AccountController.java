@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 /**
  * 账户管理控制器 — /api/accounts/*，GG平台广告账户的CRUD+软删除+下拉选项
@@ -77,6 +78,14 @@ public class AccountController {
     /** 获取下拉选项 — 返回 id + name 的简略列表 */
     public ApiResponse<?> options(@AuthenticationPrincipal UserPrincipal principal) {
         return ApiResponse.ok(accountService.options(principal.getUserId()));
+    }
+
+    @PostMapping("/batch-delete")
+    public ApiResponse<Integer> batchDelete(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, List<Long>> body) {
+        int c = 0;
+        for (Long id : body.getOrDefault("ids", List.of())) { accountService.delete(id); c++; }
+        return ApiResponse.ok(c);
     }
 
     private Long lng(Map<String, Object> m, String k) { Object v = m.get(k); return v != null ? Long.valueOf(v.toString()) : null; }
