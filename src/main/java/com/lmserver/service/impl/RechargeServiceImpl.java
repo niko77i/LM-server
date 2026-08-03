@@ -11,8 +11,9 @@ import com.lmserver.service.RechargeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.Executor;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -27,7 +28,7 @@ public class RechargeServiceImpl implements RechargeService {
 
     private final RechargeRecordsMapper mapper;
     private final SheetsSyncLogMapper syncLogMapper;
-    private ThreadPoolTaskExecutor taskExecutor;
+    private Executor taskExecutor;
 
     public RechargeServiceImpl(RechargeRecordsMapper mapper, SheetsSyncLogMapper syncLogMapper) {
         this.mapper = mapper;
@@ -36,7 +37,7 @@ public class RechargeServiceImpl implements RechargeService {
 
     @Autowired(required = false)
     @Qualifier("ggAsyncExecutor")
-    public void setTaskExecutor(ThreadPoolTaskExecutor taskExecutor) {
+    public void setTaskExecutor(Executor taskExecutor) {
         this.taskExecutor = taskExecutor;
     }
 

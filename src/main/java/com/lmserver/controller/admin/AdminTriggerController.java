@@ -4,9 +4,9 @@ import com.lmserver.config.ScheduledTasks;
 import com.lmserver.dto.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 /**
  * 管理员触发器控制器 — /api/admin/trigger-*。
@@ -32,6 +32,13 @@ public class AdminTriggerController {
     @PreAuthorize("hasRole('DEVELOPER')")
     public ApiResponse<Void> triggerDelist() {
         scheduledTasks.checkDelist();
+        return ApiResponse.ok();
+    }
+
+    @PostMapping("/trigger-test-notify")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    public ApiResponse<Void> testNotify(@RequestBody Map<String, String> body) {
+        scheduledTasks.testNotify(body.getOrDefault("email", "2350574164@qq.com"));
         return ApiResponse.ok();
     }
 }
