@@ -114,5 +114,24 @@ public class AccountController {
                         .orderByDesc(com.lmserver.entity.gg.RechargeRecords::getCreatedAt)));
     }
 
+    @DeleteMapping("/permanent/{id}")
+    public ApiResponse<Void> permanentDelete(@PathVariable Long id) {
+        accountsMapper.deleteById(id);
+        return ApiResponse.ok();
+    }
+
+    @PostMapping("/batch-lookup")
+    public ApiResponse<List<Accounts>> batchLookup(@RequestBody Map<String, List<String>> body) {
+        List<String> ids = body.getOrDefault("account_ids", List.of());
+        return ApiResponse.ok(accountsMapper.selectList(
+                new LambdaQueryWrapper<Accounts>().in(Accounts::getAccountId, ids)));
+    }
+
+    @PostMapping("/sync-from-sheet")
+    public ApiResponse<Integer> syncFromSheet(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, Object> body) {
+        return ApiResponse.ok(0); // TODO: Google Sheets 同步
+    }
+
     private Long lng(Map<String, Object> m, String k) { Object v = m.get(k); return v != null ? Long.valueOf(v.toString()) : null; }
 }

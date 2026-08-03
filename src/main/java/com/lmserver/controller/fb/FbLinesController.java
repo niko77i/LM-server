@@ -36,10 +36,19 @@ public class FbLinesController {
         mapper.insert(line);
         return ApiResponse.ok(line);
     }
+    @PutMapping("/{id}")
+    public ApiResponse<FbLines> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        FbLines line = mapper.selectById(id);
+        if (line == null) return ApiResponse.fail("不存在");
+        if (body.containsKey("line_name")) line.setLineName((String) body.get("line_name"));
+        if (body.containsKey("link")) line.setLink((String) body.get("link"));
+        if (body.containsKey("pixel_id")) line.setPixelId(Long.valueOf(body.get("pixel_id").toString()));
+        mapper.updateById(line);
+        return ApiResponse.ok(line);
+    }
+
     @DeleteMapping("/{id}")
-    /** 删除记录 */
-    public ApiResponse<Void> delete(@PathVariable Long id) {
-        mapper.deleteById(id);
+    public ApiResponse<Void> delete(@PathVariable Long id) { mapper.deleteById(id);
         return ApiResponse.ok();
     }
 }

@@ -136,6 +136,14 @@ public class YoutubeController {
         return ApiResponse.ok();
     }
 
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteVideo(@PathVariable String id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        videosMapper.delete(new LambdaQueryWrapper<Videos>()
+                .eq(Videos::getId, id).eq(Videos::getOwnerId, principal.getUserId()));
+        return ApiResponse.ok();
+    }
+
     @GetMapping("/export")
     public void export(@AuthenticationPrincipal UserPrincipal principal,
             jakarta.servlet.http.HttpServletResponse resp) throws java.io.IOException {
