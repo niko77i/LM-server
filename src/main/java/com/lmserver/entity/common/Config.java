@@ -11,10 +11,8 @@ import lombok.NoArgsConstructor;
 public class Config {
 
     @TableId
-    @TableField("`key`")
     private String key;
 
-    @TableField("`value`")
     private String value;
 
 }

@@ -32,6 +32,7 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: auto
+      column-format: "`%s`"
 
   # SMTP 邮件（QQ邮箱）
   mail:
