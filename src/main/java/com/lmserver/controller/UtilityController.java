@@ -3,12 +3,13 @@ package com.lmserver.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmserver.dto.response.ApiResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.File;
+import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -92,5 +93,22 @@ public class UtilityController {
             log.error("翻译失败: {}", e.getMessage());
             return ApiResponse.fail("翻译失败: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/api/browse/file")
+    public void browseFile(@RequestParam String path, HttpServletResponse resp) throws IOException {
+        File f = new File(path);
+        if (!f.exists() || f.isDirectory()) { resp.sendError(404); return; }
+        resp.setContentType("application/octet-stream");
+        resp.setHeader("Content-Disposition", "attachment; filename=\"" + f.getName() + "\"");
+        try (FileInputStream in = new FileInputStream(f)) { in.transferTo(resp.getOutputStream()); }
+    }
+
+    @GetMapping("/api/browse/info")
+    public ApiResponse<Map<String, Object>> browseInfo(@RequestParam String path) {
+        File f = new File(path);
+        if (!f.exists()) return ApiResponse.fail("不存在");
+        return ApiResponse.ok(Map.of("name", f.getName(), "size", f.length(),
+                "isDirectory", f.isDirectory(), "lastModified", f.lastModified()));
     }
 }

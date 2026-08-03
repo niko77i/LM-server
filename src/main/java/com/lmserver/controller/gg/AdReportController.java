@@ -108,12 +108,24 @@ public class AdReportController {
     @PostMapping("/analysis")
     public ApiResponse<String> analysis(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, String> body) {
-        return ApiResponse.ok("分析功能待接入AI模型"); // TODO: LLM分析
+        return ApiResponse.ok("分析: " + body.getOrDefault("question","")); // TODO: LLM
     }
 
     @PostMapping("/dedup-check")
-    public ApiResponse<Integer> dedupCheck(@AuthenticationPrincipal UserPrincipal principal,
+    public ApiResponse<Map<String,Integer>> dedupCheck(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, Object> body) {
-        return ApiResponse.ok(0); // TODO: 去重检查
+        @SuppressWarnings("unchecked") List<Map<String,String>> rows = (List<Map<String,String>>) body.getOrDefault("rows", List.of());
+        int dup=0; for (var r : rows) { var existing = mapper.selectList(new LambdaQueryWrapper<AdReports>()
+                .eq(AdReports::getUserId, principal.getUserId()).eq(AdReports::getCustomerId, r.get("customer_id"))
+                .eq(AdReports::getCampaign, r.get("campaign")).eq(AdReports::getReportDate, java.time.LocalDate.parse(r.get("report_date"))));
+                if (!existing.isEmpty()) dup++; }
+        return ApiResponse.ok(Map.of("duplicates", dup, "total", rows.size()));
+    }
+
+    @GetMapping("/products")
+    public ApiResponse<List<String>> products(@AuthenticationPrincipal UserPrincipal principal) {
+        var list = mapper.selectList(new LambdaQueryWrapper<AdReports>().select(AdReports::getProductName)
+                .eq(AdReports::getUserId, principal.getUserId()).groupBy(AdReports::getProductName));
+        return ApiResponse.ok(list.stream().map(AdReports::getProductName).distinct().toList());
     }
 }
