@@ -67,4 +67,19 @@ public class FbBmController {
     public ApiResponse<?> options(@AuthenticationPrincipal UserPrincipal principal) {
         return ApiResponse.ok(fbService.bmOptions(principal.getUserId()));
     }
+
+    @GetMapping("/unified")
+    public PagedResponse<FbBms> unified(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search, @RequestParam(required = false) String status) {
+        return fbService.listBms(principal.getUserId(), page, size, search, status);
+    }
+
+    @PostMapping("/{bid}/ban-and-migrate")
+    public ApiResponse<Void> banAndMigrate(@PathVariable Long bid, @RequestBody Map<String, Object> body) {
+        FbBms b = fbService.getBmById(bid);
+        if (b == null) return ApiResponse.fail("BM不存在");
+        b.setStatus("banned"); fbService.updateBm(bid, b.getName(), b.getNote());
+        return ApiResponse.ok();
+    }
 }
