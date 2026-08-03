@@ -11,8 +11,10 @@ import lombok.NoArgsConstructor;
 public class Tags {
 
         @TableId
+    @TableField("`key`")
     private String key;
 
+    @TableField("`value`")
     private String value;
 
 }
