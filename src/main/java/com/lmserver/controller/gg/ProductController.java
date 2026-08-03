@@ -81,16 +81,19 @@ public class ProductController {
         return ApiResponse.ok(productService.options(principal.getUserId()));
     }
 
-    // ──── 在跑人员 ────
+    @PostMapping("/{id}/archive")
+    public ApiResponse<Void> archive(@PathVariable Long id) {
+        Products p = productService.getById(id);
+        if (p != null) { p.setIsArchived(1L); productService.update(id,null,null,null,null,null,null,null,null); }
+        return ApiResponse.ok();
+    }
 
-    @GetMapping("/{productId}/runners")
-    public ApiResponse<List<Map<String, Object>>> listRunners(@PathVariable Long productId) { return ApiResponse.ok(List.of()); }
-
-    @PostMapping("/{productId}/runners")
-    public ApiResponse<Void> addRunner(@PathVariable Long productId, @RequestBody Map<String, Long> body) { return ApiResponse.ok(); }
-
-    @DeleteMapping("/{productId}/runners/{userId}")
-    public ApiResponse<Void> removeRunner(@PathVariable Long productId, @PathVariable Long userId) { return ApiResponse.ok(); }
+    @PostMapping("/{id}/unarchive")
+    public ApiResponse<Void> unarchive(@PathVariable Long id) {
+        Products p = productService.getById(id);
+        if (p != null) { p.setIsArchived(0L); productService.update(id,null,null,null,null,null,null,null,null); }
+        return ApiResponse.ok();
+    }
 
     private String str(Map<String, Object> m, String k) { Object v = m.get(k); return v != null ? v.toString() : null; }
     private Long lng(Map<String, Object> m, String k) { Object v = m.get(k); return v != null ? Long.valueOf(v.toString()) : null; }
