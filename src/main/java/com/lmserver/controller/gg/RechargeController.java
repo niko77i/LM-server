@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 /**
  * 充值管理控制器 — /api/recharge/*，GG平台充值记录的CRUD
@@ -54,8 +55,21 @@ public class RechargeController {
         return r != null ? ApiResponse.ok(r) : ApiResponse.fail("记录不存在");
     }
 
+    @PostMapping("/batch-create")
+    public ApiResponse<Integer> batchCreate(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody List<Map<String, Object>> items) {
+        int c = 0;
+        for (Map<String, Object> item : items) {
+            rechargeService.create(principal.getUserId(),
+                    (String) item.get("account_id"), (String) item.get("amount"),
+                    (String) item.get("operator"), (String) item.get("status"),
+                    item.get("agent_id") != null ? Long.valueOf(item.get("agent_id").toString()) : null);
+            c++;
+        }
+        return ApiResponse.ok(c);
+    }
+
     @DeleteMapping("/{id}")
-    /** 删除记录 */
     public ApiResponse<Void> delete(@PathVariable Long id) {
         rechargeService.delete(id);
         return ApiResponse.ok();
