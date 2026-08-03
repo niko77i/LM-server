@@ -16,11 +16,21 @@ public class ScheduledTasks {
 
     private final NotificationService notificationService;
 
-    /** 每周日凌晨2点执行数据清理 */
+    private final com.lmserver.mapper.gg.AccountsMapper accountsMapper;
+    private final com.lmserver.mapper.fb.FbBmsMapper fbBmsMapper;
+    private final com.lmserver.mapper.fb.FbAccountsMapper fbAccountsMapper;
+
+    /** 每周日凌晨2点清理30天前软删除的记录 */
     @Scheduled(cron = "0 0 2 * * SUN")
     public void weeklyCleanup() {
         log.info("[定时任务] 每周清理开始");
-        // TODO: 清理过期软删除记录
+        var cutoff = java.time.LocalDateTime.now().minusDays(30);
+        accountsMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.lmserver.entity.gg.Accounts>()
+                .isNotNull(com.lmserver.entity.gg.Accounts::getDeletedAt).lt(com.lmserver.entity.gg.Accounts::getDeletedAt, cutoff));
+        fbBmsMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.lmserver.entity.fb.FbBms>()
+                .isNotNull(com.lmserver.entity.fb.FbBms::getDeletedAt).lt(com.lmserver.entity.fb.FbBms::getDeletedAt, cutoff));
+        fbAccountsMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.lmserver.entity.fb.FbAccounts>()
+                .isNotNull(com.lmserver.entity.fb.FbAccounts::getDeletedAt).lt(com.lmserver.entity.fb.FbAccounts::getDeletedAt, cutoff));
         log.info("[定时任务] 每周清理完成");
     }
 

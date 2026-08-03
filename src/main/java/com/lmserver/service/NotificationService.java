@@ -1,8 +1,7 @@
 package com.lmserver.service;
 
 /**
- * 通知服务接口 — 邮件和 Telegram 通知。
- * Phase 5: SMTP 和 Telegram Bot API 待对接。
+ * 通知服务接口 — SMTP 邮件和 Telegram Bot 通知。
  */
 public interface NotificationService {
 

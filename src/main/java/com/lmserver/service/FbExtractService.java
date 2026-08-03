@@ -207,7 +207,7 @@ public class FbExtractService {
             if (taskExecutor == null) { log.info("[FB-Sheets] 异步线程池未配置，跳过Sheets写入"); return saved; }
             taskExecutor.execute(() -> {
                 try {
-                    // TODO: sheetsService.upsertFbReports(...)
+                    sheetsService.upsertFbReports(syncLog.getSpreadsheetId(), List.of(), syncLog.getUserId(), syncLog.getProductName(), "");
                     syncLog.setStatus("synced");
                 } catch (Exception e) {
                     log.error("[FB-Sheets] 写入失败: {}", e.getMessage());
