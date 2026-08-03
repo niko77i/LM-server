@@ -7,6 +7,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.*;
+import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -47,6 +49,16 @@ public class FontController {
         return ApiResponse.ok();
     }
 
+    @GetMapping("/preview/{name}")
+    public void preview(@PathVariable String name, HttpServletResponse resp) throws IOException {
+        File f = new File(FONT_DIR, name);
+        if (!f.exists()) { resp.sendError(404); return; }
+        resp.setContentType("font/ttf");
+        try (FileInputStream in = new FileInputStream(f); OutputStream out = resp.getOutputStream()) {
+            in.transferTo(out);
+        }
+    }
+
     @GetMapping("/download/{name}")
     public void download(@PathVariable String name, HttpServletResponse resp) throws IOException {
         File f = new File(FONT_DIR, name);
@@ -56,5 +68,14 @@ public class FontController {
         try (FileInputStream in = new FileInputStream(f); OutputStream out = resp.getOutputStream()) {
             in.transferTo(out);
         }
+    }
+
+    @PostMapping("/batch-upload")
+    public ApiResponse<Integer> batchUpload(@RequestParam("files") List<MultipartFile> files) {
+        int c = 0; for (MultipartFile f : files) {
+            try { File d = new File(FONT_DIR); if(!d.exists()) d.mkdirs();
+                f.transferTo(new File(d, f.getOriginalFilename())); c++; } catch(Exception ignored){}
+        }
+        return ApiResponse.ok(c);
     }
 }

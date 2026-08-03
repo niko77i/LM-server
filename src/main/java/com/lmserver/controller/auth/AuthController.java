@@ -103,4 +103,17 @@ public class AuthController {
     public ApiResponse<List<Map<String, Object>>> userNames(@AuthenticationPrincipal UserPrincipal principal) {
         return ApiResponse.ok(authService.getUserNames(principal));
     }
+
+    @GetMapping("/names/{id}")
+    public ApiResponse<Map<String, Object>> userNameById(@PathVariable Long id) {
+        var u = authService.getCurrentUser(id);
+        if (u == null) return ApiResponse.fail("不存在");
+        Map<String, Object> m = new java.util.HashMap<>();
+        m.put("id", u.getId()); m.put("username", u.getUsername());
+        m.put("display_name", u.getDisplayName()); m.put("platform", u.getPlatform());
+        return ApiResponse.ok(m);
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout() { return ApiResponse.ok(); } // JWT无状态,前端清除token即可
 }
