@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 public class ScheduledTasks {
 
     private final NotificationService notificationService;
+    private final com.lmserver.service.DelistChecker delistChecker;
 
     private final com.lmserver.mapper.gg.AccountsMapper accountsMapper;
     private final com.lmserver.mapper.fb.FbBmsMapper fbBmsMapper;
@@ -38,10 +39,7 @@ public class ScheduledTasks {
     @Scheduled(cron = "0 0 * * * *")
     public void checkDelist() {
         log.info("[定时任务] 掉包检测开始");
-        // TODO: 遍历活跃产品，Jsoup 检查 Google Play 下架
-        // 发现掉包 → notificationService.sendEmail(to, subject, body)
-        //           → notificationService.sendTelegram(message)
-        log.info("[定时任务] 掉包检测完成");
+        delistChecker.checkAll();
     }
 
     /** 测试通知（手动触发） */

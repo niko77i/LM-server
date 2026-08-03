@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -38,8 +39,19 @@ public class AdminDataController {
         ));
     }
 
+    private final com.lmserver.mapper.gg.AdReportsMapper adReportsMapper;
+    private final com.lmserver.mapper.fb.FbAdReportsMapper fbAdReportsMapper;
     @PostMapping("/import")
-    public ApiResponse<String> importData(@RequestBody Map<String, Object> body) {
-        return ApiResponse.ok("导入已触发"); // TODO
+    public ApiResponse<Integer> importData(@RequestBody Map<String, Object> body) {
+        int count = 0;
+        @SuppressWarnings("unchecked") List<Map<String,Object>> ads = (List<Map<String,Object>>) body.getOrDefault("ad_reports", List.of());
+        for (var r : ads) { try { var report = new com.lmserver.entity.gg.AdReports();
+            report.setUserId(Long.valueOf(r.get("user_id").toString())); report.setProductName((String)r.get("product_name"));
+            report.setCost(r.get("cost")!=null?Double.valueOf(r.get("cost").toString()):0); adReportsMapper.insert(report); count++; } catch(Exception ignored){} }
+        @SuppressWarnings("unchecked") List<Map<String,Object>> fbs = (List<Map<String,Object>>) body.getOrDefault("fb_ad_reports", List.of());
+        for (var r : fbs) { try { var report = new com.lmserver.entity.fb.FbAdReports();
+            report.setUserId(Long.valueOf(r.get("user_id").toString())); report.setProductName((String)r.get("product_name"));
+            report.setCost(r.get("cost")!=null?Double.valueOf(r.get("cost").toString()):0); fbAdReportsMapper.insert(report); count++; } catch(Exception ignored){} }
+        return ApiResponse.ok(count);
     }
 }

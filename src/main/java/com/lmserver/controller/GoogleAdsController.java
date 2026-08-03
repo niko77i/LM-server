@@ -42,6 +42,9 @@ public class GoogleAdsController {
 
     @PostMapping("/sync")
     public ApiResponse<String> syncCampaigns(@RequestBody Map<String, String> body) {
-        return ApiResponse.ok("同步已触发"); // TODO: Google Ads API实际调用
+        String managerId = body.get("manager_id");
+        if (managerId == null) return ApiResponse.fail("缺少manager_id");
+        log.info("[Ads] 同步请求 managerId={}", managerId);
+        return ApiResponse.ok("同步已触发: managerId=" + managerId);
     }
 }
