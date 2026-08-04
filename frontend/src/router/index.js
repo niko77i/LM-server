@@ -17,7 +17,8 @@ const routes = [
     redirect: () => {
       const token = localStorage.getItem('token')
       if (!token) return '/login'
-      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      const raw = localStorage.getItem('user')
+      const user = (raw && raw !== 'undefined') ? JSON.parse(raw) : {}
       return user.platform === 'fb' ? '/fb/products' : '/accounts/products'
     }
   },

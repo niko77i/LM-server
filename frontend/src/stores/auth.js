@@ -76,10 +76,14 @@ export const useAuthStore = defineStore('auth', {
     initFromStorage() {
       const token = localStorage.getItem('token')
       const user = localStorage.getItem('user')
-      if (token && user) {
-        this.token = token
-        this.user = JSON.parse(user)
-        this.isLoggedIn = true
+      if (token && user && user !== 'undefined') {
+        try {
+          this.token = token
+          this.user = JSON.parse(user)
+          this.isLoggedIn = true
+        } catch (e) {
+          this.logout()
+        }
       }
     }
   }
