@@ -27,7 +27,12 @@ api.interceptors.response.use(
     if (newToken) {
       localStorage.setItem('token', newToken)
     }
-    return resp.data
+    const body = resp.data
+    // Java 后端统一解包: {success:true, data:{...}} → {...}
+    if (body && body.success === true && body.data !== undefined) {
+      return body.data
+    }
+    return body
   },
   err => {
     if (err.response?.status === 401 && !err.config.url?.includes('/auth/')) {

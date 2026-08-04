@@ -27,17 +27,16 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(username, password) {
       const res = await authApi.login(username, password)
-      const data = res.data || res
-      this.token = data.accessToken
-      this.user = data.user
+      this.token = res.accessToken
+      this.user = res.user
       this.isLoggedIn = true
       if (this.isDeveloper) {
         this.currentPlatform = 'gg'
       } else {
-        this.currentPlatform = data.user?.platform || 'gg'
+        this.currentPlatform = res.user?.platform || 'gg'
       }
-      localStorage.setItem('token', data.accessToken)
-      localStorage.setItem('user', JSON.stringify(data.user))
+      localStorage.setItem('token', res.accessToken)
+      localStorage.setItem('user', JSON.stringify(res.user))
       return res
     },
     async register(username, password, display_name) {
