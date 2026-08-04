@@ -14,11 +14,7 @@ app.use(pinia)
 app.use(router)
 app.use(ElementPlus, { locale: zhCn, size: 'large' })
 
-// 启动时恢复登录态
-const auth = useAuthStore()
-auth.initFromStorage()
-if (auth.isLoggedIn && auth.token) {
-  auth.fetchMe().catch(() => auth.logout())
-}
+// 启动时从 localStorage 恢复登录态
+useAuthStore().initFromStorage()
 
 app.mount('#app')
