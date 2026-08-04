@@ -27,16 +27,17 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(username, password) {
       const res = await authApi.login(username, password)
-      this.token = res.accessToken
-      this.user = res.user
+      const d = res.data || res  // Java 返回 {success, data:{accessToken, user}}
+      this.token = d.accessToken
+      this.user = d.user
       this.isLoggedIn = true
       if (this.isDeveloper) {
         this.currentPlatform = 'gg'
       } else {
-        this.currentPlatform = res.user?.platform || 'gg'
+        this.currentPlatform = d.user?.platform || 'gg'
       }
-      localStorage.setItem('token', res.accessToken)
-      localStorage.setItem('user', JSON.stringify(res.user))
+      localStorage.setItem('token', d.accessToken)
+      localStorage.setItem('user', JSON.stringify(d.user))
       return res
     },
     async register(username, password, display_name) {
@@ -46,12 +47,15 @@ export const useAuthStore = defineStore('auth', {
     async fetchMe() {
       try {
         const res = await authApi.me()
-        const data = res.data || res
-        this.user = data.user
-        localStorage.setItem('user', JSON.stringify(data.user))
-        return data.user
+        const d = res.data || res
+        if (d && d.id) {
+          this.user = d
+          this.isLoggedIn = true
+          localStorage.setItem('user', JSON.stringify(d))
+          return d
+        }
+        return null
       } catch (e) {
-        this.logout()
         return null
       }
     },

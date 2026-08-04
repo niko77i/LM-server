@@ -6,15 +6,9 @@ import './assets/global.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import App from './App.vue'
 import router from './router'
-import { useAuthStore } from './stores/auth'
 
 const app = createApp(App)
-const pinia = createPinia()
-app.use(pinia)
+app.use(createPinia())
 app.use(router)
 app.use(ElementPlus, { locale: zhCn, size: 'large' })
-
-// 启动时从 localStorage 恢复登录态
-useAuthStore().initFromStorage()
-
 app.mount('#app')
