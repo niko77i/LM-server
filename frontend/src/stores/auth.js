@@ -27,17 +27,17 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(username, password) {
       const res = await authApi.login(username, password)
-      this.token = res.access_token
-      this.user = res.user
+      const data = res.data || res
+      this.token = data.accessToken
+      this.user = data.user
       this.isLoggedIn = true
-      // 设置当前平台
       if (this.isDeveloper) {
-        this.currentPlatform = 'gg' // developer 默认进 GG
+        this.currentPlatform = 'gg'
       } else {
-        this.currentPlatform = res.user?.platform || 'gg'
+        this.currentPlatform = data.user?.platform || 'gg'
       }
-      localStorage.setItem('token', res.access_token)
-      localStorage.setItem('user', JSON.stringify(res.user))
+      localStorage.setItem('token', data.accessToken)
+      localStorage.setItem('user', JSON.stringify(data.user))
       return res
     },
     async register(username, password, display_name) {
@@ -47,9 +47,10 @@ export const useAuthStore = defineStore('auth', {
     async fetchMe() {
       try {
         const res = await authApi.me()
-        this.user = res.user
-        localStorage.setItem('user', JSON.stringify(res.user))
-        return res.user
+        const data = res.data || res
+        this.user = data.user
+        localStorage.setItem('user', JSON.stringify(data.user))
+        return data.user
       } catch (e) {
         this.logout()
         return null
