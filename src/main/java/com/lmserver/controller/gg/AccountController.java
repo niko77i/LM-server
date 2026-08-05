@@ -34,7 +34,7 @@ public class AccountController {
     private final RechargeRecordsMapper rechargeRecordsMapper;
     private final AccountMccHistoryMapper mccHistoryMapper;
 
-    @GetMapping("/list") public PagedResponse<Accounts> list(
+    @GetMapping("/list") public PagedResponse<Map<String, Object>> list(
             @AuthenticationPrincipal UserPrincipal p, @RequestParam(defaultValue="1") int page,
             @RequestParam(defaultValue="20") int size, @RequestParam(required=false) String search,
             @RequestParam(required=false) Long statusId, @RequestParam(required=false) Long mccId,

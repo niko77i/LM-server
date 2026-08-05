@@ -35,7 +35,7 @@ public class ProductController {
 
     @GetMapping("/list")
     /** 分页列表查询 — 支持多条件筛选 */
-    public PagedResponse<Products> list(
+    public PagedResponse<Map<String, Object>> list(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,

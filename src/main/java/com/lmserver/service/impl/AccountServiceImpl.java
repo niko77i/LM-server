@@ -41,7 +41,7 @@ public class AccountServiceImpl implements AccountService {
     // ═══════ 查询 ═══════
 
     @Override
-    public PagedResponse<Accounts> list(Long ownerId, int page, int size, String search, Long statusId, Long mccId, Long agentId) {
+    public PagedResponse<Map<String, Object>> list(Long ownerId, int page, int size, String search, Long statusId, Long mccId, Long agentId) {
         var qw = new LambdaQueryWrapper<Accounts>().eq(Accounts::getOwnerId, ownerId).isNull(Accounts::getDeletedAt);
         if (search != null && !search.isBlank())
             qw.and(w -> w.like(Accounts::getName, search).or().like(Accounts::getAccountId, search));
@@ -50,7 +50,42 @@ public class AccountServiceImpl implements AccountService {
         if (agentId != null) qw.eq(Accounts::getAgentId, agentId);
         qw.orderByDesc(Accounts::getCreatedAt);
         var pg = accountsMapper.selectPage(new Page<>(page, size), qw);
-        return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
+
+        // Batch-load related data
+        var allMcc = new HashMap<Long, com.lmserver.entity.gg.Mcc>();
+        var allAgents = new HashMap<Long, com.lmserver.entity.common.Agents>();
+        var allStatuses = new HashMap<Long, com.lmserver.entity.common.AccountStatuses>();
+        for (Accounts a : pg.getRecords()) {
+            if (a.getMccId() != null && !allMcc.containsKey(a.getMccId()))
+                allMcc.put(a.getMccId(), mccMapper.selectById(a.getMccId()));
+            if (a.getAgentId() != null && !allAgents.containsKey(a.getAgentId()))
+                allAgents.put(a.getAgentId(), agentsMapper.selectById(a.getAgentId()));
+            if (a.getStatusId() != null && !allStatuses.containsKey(a.getStatusId()))
+                allStatuses.put(a.getStatusId(), statusesMapper.selectById(a.getStatusId()));
+        }
+
+        // Build enriched rows
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Accounts a : pg.getRecords()) {
+            var mcc = allMcc.get(a.getMccId());
+            var agent = allAgents.get(a.getAgentId());
+            var st = allStatuses.get(a.getStatusId());
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", a.getId()); row.put("name", a.getName()); row.put("account_id", a.getAccountId());
+            row.put("mcc_id", a.getMccId()); row.put("agent_id", a.getAgentId()); row.put("status_id", a.getStatusId());
+            row.put("timezone", a.getTimezone()); row.put("owner_id", a.getOwnerId());
+            row.put("acquired_date", a.getAcquiredDate()); row.put("death_date", a.getDeathDate());
+            row.put("status_changed_date", a.getStatusChangedDate()); row.put("created_at", a.getCreatedAt());
+            row.put("deleted_at", a.getDeletedAt());
+            // JOIN names
+            row.put("mcc_name", mcc != null ? mcc.getName() : null);
+            row.put("mcc_code", mcc != null ? mcc.getMccId() : null);
+            row.put("agent", agent != null ? agent.getName() : null);
+            row.put("status", st != null ? st.getName() : null);
+            items.add(row);
+        }
+
+        return PagedResponse.of(items, pg.getTotal(), page, size);
     }
 
     @Override
@@ -353,6 +388,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Autowired private com.lmserver.mapper.common.AgentsMapper agentsMapper;
     @Autowired private com.lmserver.mapper.common.AccountStatusesMapper statusesMapper;
+    @Autowired private com.lmserver.mapper.gg.MccMapper mccMapper;
 
     private Long lng(Object v) { return v != null ? Long.valueOf(v.toString()) : null; }
 

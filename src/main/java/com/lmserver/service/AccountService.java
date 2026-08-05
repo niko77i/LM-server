@@ -4,13 +4,14 @@ import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.dto.response.SyncResult;
 import com.lmserver.entity.gg.Accounts;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 账户管理服务接口 — 多条件筛选+软删除+清账+Sheet同步。
  * 所有写操作要求传入 userId 校验 owner_id 权限。
  */
 public interface AccountService {
-    PagedResponse<Accounts> list(Long ownerId, int page, int size, String search, Long statusId, Long mccId, Long agentId);
+    PagedResponse<Map<String, Object>> list(Long ownerId, int page, int size, String search, Long statusId, Long mccId, Long agentId);
     Accounts getById(Long id);
     Accounts create(Long ownerId, String name, String accountId, Long mccId, Long agentId, Long statusId, String timezone);
 
