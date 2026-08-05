@@ -2,6 +2,7 @@ package com.lmserver.controller;
 
 import com.lmserver.dto.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.system.ApplicationHome;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +12,7 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.net.URISyntaxException;
 import java.nio.file.*;
 import java.util.*;
 import java.util.List;
@@ -18,8 +20,12 @@ import java.util.List;
 /**
  * 字体管理控制器 — 对齐 Python main.py fonts_* 系列接口。
  *
+ * <h3>字体存储路径</h3>
+ * 部署时自动解析为 jar 包同级目录下的 fonts/ 子目录。
+ * 开发时回退到当前工作目录下的 fonts/。
+ *
  * <ul>
- * <li>GET /api/fonts/list       — 扫描 fonts/ 目录 + Windows 系统字体</li>
+ * <li>GET /api/fonts/list       — 扫描字体目录 + Windows 系统字体</li>
  * <li>POST /api/fonts/import    — 从本地磁盘路径导入字体文件</li>
  * <li>POST /api/fonts/upload    — HTTP multipart 上传字体文件</li>
  * <li>GET /api/fonts/preview    — 生成字体标本卡 PNG 预览图</li>
@@ -35,12 +41,28 @@ import java.util.List;
 @RequestMapping("/api/fonts")
 public class FontController {
 
-    /** 用户字体目录 */
-    static final Path DIR = Paths.get("fonts");
-    /** 最近使用记录文件 */
-    static final Path RECENT = DIR.resolve(".recent");
     /** 支持的字体文件扩展名 */
     static final Set<String> EXTS = Set.of(".ttf", ".otf", ".ttc", ".woff", ".woff2");
+
+    /**
+     * 解析字体目录路径。
+     * 部署环境（jar 包运行时）: jar 同级目录下的 fonts/
+     * 开发环境（IDE/mvn spring-boot:run）: 当前工作目录下的 fonts/
+     */
+    private Path fontsDir() {
+        try {
+            ApplicationHome home = new ApplicationHome(FontController.class);
+            Path jarOrClasses = home.getSource() != null ? home.getSource().toPath() : null;
+            if (jarOrClasses != null) {
+                // jar:file:///.../lm-server-0.1.0-SNAPSHOT.jar → 取 jar 所在目录
+                Path base = Files.isRegularFile(jarOrClasses) ? jarOrClasses.getParent() : jarOrClasses;
+                if (base != null) return base.resolve("fonts");
+            }
+        } catch (Exception e) {
+            log.warn("解析 JAR 路径失败，回退到工作目录: {}", e.getMessage());
+        }
+        return Paths.get("fonts");
+    }
 
     // ═══════════ 字体列表 ═══════════
 
@@ -60,9 +82,10 @@ public class FontController {
         List<String> recent = recent();
 
         // 1. 用户导入字体（fonts/ 目录）
+        Path dir = fontsDir();
         try {
-            if (Files.isDirectory(DIR)) {
-                Files.list(DIR)
+            if (Files.isDirectory(dir)) {
+                Files.list(fontsDir())
                     .filter(p -> EXTS.stream().anyMatch(p.getFileName().toString().toLowerCase()::endsWith))
                     .sorted((a, b) -> {
                         boolean ra = recent.contains(strip(a)), rb = recent.contains(strip(b));
@@ -103,7 +126,7 @@ public class FontController {
         List<String> sources = (List<String>) body.getOrDefault("sources", List.of());
         int imported = 0;
         try {
-            Files.createDirectories(DIR);
+            Files.createDirectories(fontsDir());
             for (String sp : sources) {
                 Path src = Paths.get(sp.replace("\\", "/"));
                 if (Files.isDirectory(src)) {
@@ -128,11 +151,11 @@ public class FontController {
     public ApiResponse<Map<String, Object>> upload(@RequestParam("files") List<MultipartFile> files) {
         int imported = 0;
         try {
-            Files.createDirectories(DIR);
+            Files.createDirectories(fontsDir());
             for (MultipartFile f : files) {
                 if (f.getOriginalFilename() == null) continue;
                 if (EXTS.stream().noneMatch(f.getOriginalFilename().toLowerCase()::endsWith)) continue;
-                Path dst = DIR.resolve(f.getOriginalFilename());
+                Path dst = fontsDir().resolve(f.getOriginalFilename());
                 if (!Files.exists(dst)) Files.copy(f.getInputStream(), dst);
                 imported++;
             }
@@ -241,12 +264,12 @@ public class FontController {
         String font = body.getOrDefault("font", "").trim();
         if (font.isEmpty()) return ApiResponse.ok();
         try {
-            Files.createDirectories(DIR);
+            Files.createDirectories(fontsDir());
             List<String> recent = recent();
             recent.remove(font);
             recent.add(0, font);
             if (recent.size() > 20) recent = recent.subList(0, 20);
-            Files.write(RECENT, recent);
+            Files.write(fontsDir().resolve(".recent"), recent);
         } catch (Exception e) {
             log.warn("标记字体失败: {}", e.getMessage());
         }
@@ -258,10 +281,11 @@ public class FontController {
     /** 根据字体 ID 查找完整路径，先查用户字体再查系统字体 */
     Path find(String id) {
         // 用户字体
+        Path dir = fontsDir();
         try {
-            if (Files.isDirectory(DIR))
+            if (Files.isDirectory(dir))
                 for (String ext : EXTS) {
-                    Path p = DIR.resolve(id + ext);
+                    Path p = fontsDir().resolve(id + ext);
                     if (Files.isRegularFile(p)) return p;
                 }
         } catch (Exception ignored) {}
@@ -288,7 +312,7 @@ public class FontController {
 
     /** 复制文件到 fonts/ 目录（已存在则跳过），返回 1=新增 0=跳过 */
     int copyIfNew(Path src) throws IOException {
-        Path dst = DIR.resolve(src.getFileName());
+        Path dst = fontsDir().resolve(src.getFileName());
         if (Files.exists(dst)) return 0;
         Files.copy(src, dst);
         return 1;
@@ -297,8 +321,8 @@ public class FontController {
     /** 读取最近使用列表 */
     List<String> recent() {
         try {
-            return Files.isRegularFile(RECENT)
-                    ? new ArrayList<>(Files.readAllLines(RECENT))
+            return Files.isRegularFile(fontsDir().resolve(".recent"))
+                    ? new ArrayList<>(Files.readAllLines(fontsDir().resolve(".recent")))
                     : new ArrayList<>();
         } catch (Exception ignored) {
             return new ArrayList<>();

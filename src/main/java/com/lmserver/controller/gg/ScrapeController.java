@@ -10,6 +10,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.system.ApplicationHome;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,7 +49,19 @@ import java.util.stream.Collectors;
 public class ScrapeController {
 
     private final ScrapeCacheMapper scrapeCacheMapper;
-    private static final Path SCRAPE_DIR = Paths.get("scrape_images");
+
+    /** 解析抓取图片目录 — 部署时 jar 同级 scrape_images/，开发时回退工作目录 */
+    private Path scrapeDir() {
+        try {
+            ApplicationHome home = new ApplicationHome(ScrapeController.class);
+            Path src = home.getSource() != null ? home.getSource().toPath() : null;
+            if (src != null) {
+                Path base = Files.isRegularFile(src) ? src.getParent() : src;
+                if (base != null) return base.resolve("scrape_images");
+            }
+        } catch (Exception e) { log.warn("解析 JAR 路径失败: {}", e.getMessage()); }
+        return Paths.get("scrape_images");
+    }
 
     @GetMapping("/cache")
     public ApiResponse<List<ScrapeCache>> listCache() {
@@ -65,7 +78,7 @@ public class ScrapeController {
     public ApiResponse<Void> clearCache(@PathVariable String packageName,
             @AuthenticationPrincipal UserPrincipal principal) {
         scrapeCacheMapper.deleteById(packageName);
-        try { Files.deleteIfExists(SCRAPE_DIR.resolve(packageName)); } catch (Exception ignored) {}
+        try { Files.deleteIfExists(scrapeDir().resolve(packageName)); } catch (Exception ignored) {}
         return ApiResponse.ok();
     }
 
@@ -81,8 +94,8 @@ public class ScrapeController {
         if (pkgName.isBlank()) return ApiResponse.fail("无法提取包名");
 
         try {
-            Files.createDirectories(SCRAPE_DIR);
-            Path pkgDir = SCRAPE_DIR.resolve(pkgName);
+            Files.createDirectories(scrapeDir());
+            Path pkgDir = scrapeDir().resolve(pkgName);
             Files.createDirectories(pkgDir);
 
             Document doc = Jsoup.connect(url)
@@ -159,7 +172,7 @@ public class ScrapeController {
     @GetMapping("/download")
     public org.springframework.http.ResponseEntity<org.springframework.core.io.FileSystemResource> download(
             @RequestParam String packageName) {
-        Path dir = SCRAPE_DIR.resolve(packageName);
+        Path dir = scrapeDir().resolve(packageName);
         if (!Files.isDirectory(dir)) return org.springframework.http.ResponseEntity.notFound().build();
         // 返回第一个截图
         for (int i = 1; i <= 10; i++) {
