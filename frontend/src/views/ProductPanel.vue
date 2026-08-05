@@ -113,6 +113,7 @@ import CopyImportModal from '@/components/CopyImportModal.vue'
 import AddPackageModal from '@/components/AddPackageModal.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { productsApi } from '@/api/products'
+import { mccApi } from '@/api/accounts'
 import api from '@/api/client'
 
 const auth = useAuthStore()
@@ -138,7 +139,7 @@ const regionTimezone = ref({})
 
 const customName = ref('')
 
-onMounted(() => { load(); loadRunnerUsers(); loadRegionTimezone(); loadCustomName() })
+onMounted(() => { load(); loadRunnerUsers(); loadRegionTimezone(); loadMccOptions(); loadCustomName() })
 
 // 监听手动掉包检测完成事件，自动刷新产品列表
 window.addEventListener('delist-check-completed', load)
@@ -155,9 +156,21 @@ async function loadRegionTimezone() {
   try {
     const res = await api.get('/regions/list')
     const map = {}
-    for (const r of (res.regions || [])) { map[r.name] = r.timezone }
+    const names = []
+    for (const r of (res.items || [])) {
+      map[r.name] = r.timezone
+      names.push(r.name)
+    }
     regionTimezone.value = map
+    regions.value = names
   } catch {}
+}
+
+async function loadMccOptions() {
+  try {
+    const res = await mccApi.options()
+    mccOptions.value = res.data || []
+  } catch { mccOptions.value = [] }
 }
 
 function runnerParam() {
@@ -166,8 +179,6 @@ function runnerParam() {
 
 async function load() {
   const res = await store.loadProducts({ runner: runnerParam() })
-  regions.value = res.regions || []
-  mccOptions.value = res.mcc_options || []
   if (res.runner_counts) runnerCounts.value = res.runner_counts
   selectedIds.value = []
 
@@ -195,7 +206,7 @@ async function scrollToHighlightedPackage() {
 async function loadRunnerUsers() {
   try {
     const res = await api.get('/users/names')
-    runnerUserOptions.value = res.users || []
+    runnerUserOptions.value = res.data || []
   } catch { runnerUserOptions.value = [] }
 }
 
@@ -290,7 +301,7 @@ function openAuditLog() {
 async function loadAuditLogs() {
   try {
     const res = await productsApi.auditLogList({ page: auditPage.value, size: 20 })
-    auditLogs.value = res.logs || []
+    auditLogs.value = res.items || []
     auditTotal.value = res.total || 0
   } catch { auditLogs.value = [] }
 }

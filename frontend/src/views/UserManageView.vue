@@ -214,7 +214,7 @@ async function fetchUsers() {
   loading.value = true
   try {
     const res = await adminApi.listUsers({ search: search.value, page: currentPage.value, page_size: pageSize.value, platform: platformFilter.value || undefined })
-    users.value = res.users
+    users.value = res.items
     total.value = res.total
   } catch (e) {
     ElMessage.error('加载用户列表失败')

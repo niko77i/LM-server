@@ -71,14 +71,14 @@ const form = reactive({ product_name: '', kpi: '', region: '', prefix: '', text:
 
 onMounted(async () => {
   const res = await store.loadProducts()
-  productNames.value = (res.products || []).map(p => ({ name: p.product_name, kpi: p.kpi, region: p.region }))
+  productNames.value = (res.items || []).map(p => ({ name: p.product_name, kpi: p.kpi, region: p.region }))
   loadRegions()
 })
 
 async function loadRegions() {
   try {
     const res = await api.get('/regions/list')
-    regionOptions.value = res.regions || []
+    regionOptions.value = res.items || []
   } catch { regionOptions.value = [] }
 }
 

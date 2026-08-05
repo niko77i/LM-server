@@ -206,7 +206,7 @@ const runnerIds = computed(() => {
 async function load() {
   if (props.prodId) {
     const res = await store.loadProductDetail(props.prodId)
-    product.value = res.product
+    product.value = res.data
     await loadUsers()
     await loadAssets()
   }
@@ -215,7 +215,7 @@ async function load() {
 async function loadUsers() {
   try {
     const res = await api.get('/users/names')
-    availableUsers.value = res.users || []
+    availableUsers.value = res.data || []
   } catch { availableUsers.value = [] }
 }
 

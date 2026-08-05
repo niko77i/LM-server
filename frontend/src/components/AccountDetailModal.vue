@@ -168,10 +168,10 @@ async function load() {
     }
     // 加载历史
     const res = await accountsApi.history(props.accountId)
-    history.value = res.history || []
+    history.value = res.data || []
     // 加载充值记录
     const rr = await accountsApi.rechargeRecords(props.accountId)
-    rechargeRecords.value = rr.records || []
+    rechargeRecords.value = rr.data || []
   } catch (e) {
     ElMessage.error('加载失败: ' + (e.response?.data?.error || e.message))
   }

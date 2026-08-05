@@ -438,7 +438,7 @@ function formatNum(v) {
 async function loadProducts() {
   try {
     const res = await reportsApi.products()
-    products.value = res.products || []
+    products.value = res.data || []
   } catch { products.value = [] }
 }
 

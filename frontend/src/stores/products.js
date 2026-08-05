@@ -24,7 +24,7 @@ export const useProductStore = defineStore('products', {
           runner: extra.runner || undefined,
         }
         return productsApi.list(params).then(res => {
-          this.products = res.products
+          this.products = res.items
         this.total = res.total
         return res
       })

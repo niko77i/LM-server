@@ -368,7 +368,7 @@ async function loadConsumptionDetail() {
   try {
     const res = await consumptionApi.get(consumptionVideo.value.id)
     consumptionTotal.value = res.total || 0
-    consumptionUsers.value = (res.users || []).map(u => ({ ...u, _expanded: false }))
+    consumptionUsers.value = (res.data || []).map(u => ({ ...u, _expanded: false }))
   } catch { consumptionTotal.value = 0; consumptionUsers.value = [] }
   consumptionLoading.value = false
 }
@@ -376,7 +376,7 @@ async function loadConsumptionDetail() {
 async function loadRunnerProducts() {
   try {
     const res = await productApi.runnerProducts()
-    runnerProducts.value = res.products || []
+    runnerProducts.value = res.data || []
   } catch { runnerProducts.value = [] }
 }
 

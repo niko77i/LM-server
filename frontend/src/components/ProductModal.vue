@@ -57,7 +57,7 @@ const salesPersonOptions = computed(() => accountStore.options.salesPersons || [
 async function loadRegions() {
   try {
     const res = await api.get('/regions/list')
-    regionOptions.value = res.regions || []
+    regionOptions.value = res.items || []
   } catch { regionOptions.value = [] }
 }
 

@@ -685,7 +685,7 @@ async function loadCrossUser() {
   if (!filterProduct.value.length) { crossUserData.value = []; return }
   try {
     const res = await reportsApi.crossUser({ ...filterParams() })
-    crossUserData.value = res.users || []
+    crossUserData.value = res.data || []
   } catch { crossUserData.value = [] }
 }
 
@@ -756,8 +756,9 @@ async function loadFilterOptions() {
     if (filterRegion.value) params.region = filterRegion.value
     if (filterProduct.value.length) params.product_name = filterProduct.value.join(',')
     const res = await reportsApi.list(params)
-    filterProducts.value = res.products || []
-    filterRegions.value = res.regions || []
+    const items = res.items || []
+    filterProducts.value = [...new Set(items.map(r => r.productName || r.product_name).filter(Boolean))]
+    filterRegions.value = [...new Set(items.map(r => r.region).filter(Boolean))]
   } catch {}
 }
 

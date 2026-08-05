@@ -32,5 +32,5 @@
 import { ref } from 'vue'; import { useAccountStore } from '@/stores/accounts'
 const props = defineProps({ visible: Boolean, mccId: Number }); defineEmits(['update:visible'])
 const store = useAccountStore(); const data = ref(null)
-async function load() { if(props.mccId) { const res = await store.loadMccDetail(props.mccId); data.value = res.mcc || res; } }
+async function load() { if(props.mccId) { const res = await store.loadMccDetail(props.mccId); data.value = res.data || res; } }
 </script>

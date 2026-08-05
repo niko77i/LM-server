@@ -311,7 +311,7 @@ onMounted(async () => {
 async function loadRegions() {
   try {
     const res = await api.get('/regions/list')
-    regionList.value = (res.regions || []).map(r => ({ ...r, _editTz: r.timezone }))
+    regionList.value = (res.items || []).map(r => ({ ...r, _editTz: r.timezone }))
   } catch { regionList.value = [] }
 }
 

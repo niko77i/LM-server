@@ -18,7 +18,7 @@ export const useYoutubeStore = defineStore('youtube', {
     async loadVideos() {
       return dedupLoader(this, 'v', () => {
         return youtubeApi.list(this.filters).then(res => {
-          this.videos = res.videos
+          this.videos = res.items
           this.counts = res.counts
           return res
         })

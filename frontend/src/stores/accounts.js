@@ -28,7 +28,7 @@ export const useAccountStore = defineStore('accounts', {
       return dedupLoader(this, 'ac', () => {
         const params = { page: this.acPage, size: this.acPageSize, ...this.acFilters }
         return accountsApi.list(params).then(res => {
-          this.accounts = res.accounts
+          this.accounts = res.items
           this.acTotal = res.total
           return res
         })
@@ -45,7 +45,7 @@ export const useAccountStore = defineStore('accounts', {
       return dedupLoader(this, 'mccList', () => {
         const params = { page: this.mccPage, size: this.mccPageSize, ...this.mccFilters }
         return mccApi.list(params).then(res => {
-          this.mccList = res.mcc_list
+          this.mccList = res.items
           this.mccTotal = res.total
           return res
         })
@@ -85,7 +85,7 @@ export const useAccountStore = defineStore('accounts', {
     },
     async loadDeletedAccounts() {
       const res = await accountsApi.listDeleted()
-      return res.accounts || []
+      return res.items || []
     },
 
     // ---- option actions: agents ----

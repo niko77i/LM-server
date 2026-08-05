@@ -8,12 +8,18 @@ import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.lmserver.dto.sheets.FbReportRow;
 import com.lmserver.dto.sheets.ZuobiaoRow;
+import com.lmserver.entity.gg.Packages;
+import com.lmserver.entity.gg.Products;
+import com.lmserver.mapper.gg.PackagesMapper;
+import com.lmserver.mapper.gg.ProductsMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Google Sheets 服务 — GG 做表 14 列 upsert + FB 做表 12 列 upsert。
@@ -25,6 +31,11 @@ public class GoogleSheetsService {
 
     @Value("${google.sheets.credentials-path}")
     private String credentialsPath;
+
+    @Autowired
+    private ProductsMapper productsMapper;
+    @Autowired
+    private PackagesMapper packagesMapper;
 
     private Sheets sheets;
     private boolean initialized;
@@ -61,6 +72,53 @@ public class GoogleSheetsService {
             String productName, String reportDate) {
         init();
         if (sheets == null) return Map.of("error", "Sheets 未初始化");
+
+        // ── 包名校验：产品包系列名 vs 数据广告系列名取交集 ──
+        boolean seriesMismatchWarning = false;
+        if (productName != null && !productName.isBlank()) {
+            var productQw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Products>()
+                    .eq(Products::getProductName, productName);
+            Products product = productsMapper.selectOne(productQw);
+            if (product != null) {
+                // 产品下所有正常状态的包系列名
+                var pkgQw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Packages>()
+                        .eq(Packages::getProductId, product.getId())
+                        .eq(Packages::getStatus, "正常");
+                Set<String> pkgSeriesNames = packagesMapper.selectList(pkgQw).stream()
+                        .map(Packages::getSeriesName)
+                        .filter(s -> s != null && !s.isBlank())
+                        .collect(Collectors.toSet());
+
+                // 数据中的广告系列名（G 列）
+                Set<String> campaigns = rows.stream()
+                        .map(ZuobiaoRow::getSeriesName)
+                        .filter(s -> s != null && !s.isBlank())
+                        .collect(Collectors.toSet());
+
+                // 养户行：没有系列名也没有包名的行
+                boolean hasMaintenanceRow = rows.stream()
+                        .anyMatch(r -> (r.getSeriesName() == null || r.getSeriesName().isBlank())
+                                && (r.getPackageName() == null || r.getPackageName().isBlank()));
+
+                // 取交集
+                campaigns.retainAll(pkgSeriesNames);
+
+                if (campaigns.isEmpty()) {
+                    if (!hasMaintenanceRow) {
+                        return Map.of("error", "产品选择有误！「" + productName
+                                + "」的包系列与数据中的广告系列不匹配，请重新选择产品。");
+                    }
+                    // 无交集但有养户行 → 只写入养户行，跳过其他行
+                    seriesMismatchWarning = true;
+                    rows = rows.stream()
+                            .filter(r -> (r.getSeriesName() == null || r.getSeriesName().isBlank())
+                                    && (r.getPackageName() == null || r.getPackageName().isBlank()))
+                            .collect(Collectors.toList());
+                    log.warn("[GG-Sheets] 包系列与广告系列无交集，仅写入 {} 行养户数据", rows.size());
+                }
+            }
+        }
+
         int updated = 0, appended = 0;
         try {
             Spreadsheet sp = sheets.spreadsheets().get(spreadsheetId).execute();
@@ -124,6 +182,10 @@ public class GoogleSheetsService {
         } catch (Exception e) {
             log.error("[GG-Sheets] 失败: {}", e.getMessage());
             return Map.of("error", e.getMessage());
+        }
+        if (seriesMismatchWarning) {
+            return Map.of("updated", updated, "appended", appended,
+                    "warning", "产品「" + productName + "」的包系列与数据中的广告系列无交集，请确认产品选择是否正确。");
         }
         return Map.of("updated", updated, "appended", appended);
     }

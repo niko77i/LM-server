@@ -553,7 +553,7 @@ async function loadScrapeUsers() {
   if (!authStore.isAdmin) return
   try {
     const res = await videoApi.scrapeUsers()
-    scrapeUsers.value = res.users || []
+    scrapeUsers.value = res.data || []
   } catch(e) { console.error('加载用户列表失败:', e) }
 }
 function onUserChange(dn) {

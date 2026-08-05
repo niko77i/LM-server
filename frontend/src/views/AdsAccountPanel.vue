@@ -130,6 +130,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useAccountStore } from '@/stores/accounts'
+import { mccApi } from '@/api/accounts'
 import AccountModal from '@/components/AccountModal.vue'
 import AccountBatchImportModal from '@/components/AccountBatchImportModal.vue'
 import AccountBatchLookupModal from '@/components/AccountBatchLookupModal.vue'
@@ -175,14 +176,21 @@ onMounted(() => {
   store.loadStatuses()
   if (!store.acFilters.status) store.acFilters.status = '存活'
   load()
+  loadMccOptions()
 })
 
 async function load() {
   const res = await store.loadAccounts()
-  mccOptions.value = res.mcc_options || []
   agentOptions.value = store.options.agents.map(a => ({ id: a.id, name: a.name }))
   timezoneOptions.value = res.timezone_options || []
   if (res.status_counts) statusCounts.value = res.status_counts
+}
+
+async function loadMccOptions() {
+  try {
+    const res = await mccApi.options()
+    mccOptions.value = res.data || []
+  } catch { mccOptions.value = [] }
 }
 
 function filterByTimezone() { store.acPage = 1; load() }

@@ -461,7 +461,7 @@ async function loadZbProducts() {
   zbProductsLoading.value = true
   try {
     const res = await api.get('/ad-reports/products')
-    zbProducts.value = res.products || []
+    zbProducts.value = res.data || []
   } catch { zbProducts.value = [] }
   zbProductsLoading.value = false
 }
