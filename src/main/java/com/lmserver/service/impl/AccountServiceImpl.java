@@ -85,6 +85,26 @@ public class AccountServiceImpl implements AccountService {
             items.add(row);
         }
 
+        // Build extra metadata for frontend filters
+        Map<String, Long> statusCounts = new LinkedHashMap<>();
+        for (Accounts a : accountsMapper.selectList(
+                new LambdaQueryWrapper<Accounts>().eq(Accounts::getOwnerId, ownerId).isNull(Accounts::getDeletedAt))) {
+            var st = allStatuses.get(a.getStatusId());
+            String name = st != null ? st.getName() : "未知";
+            statusCounts.merge(name, 1L, Long::sum);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("items", items);
+        result.put("total", pg.getTotal());
+        result.put("page", page);
+        result.put("size", size);
+        result.put("status_counts", statusCounts);
+        result.put("mcc_options", mccMapper.selectList(
+                new LambdaQueryWrapper<com.lmserver.entity.gg.Mcc>().eq(com.lmserver.entity.gg.Mcc::getOwnerId, ownerId))
+                .stream().map(m -> { Map<String, Object> opt = new LinkedHashMap<>(); opt.put("id", m.getId()); opt.put("name", m.getName()); opt.put("mcc_id", m.getMccId()); return opt; }).toList());
+        result.put("timezone_options", accountsMapper.selectList(
+                new LambdaQueryWrapper<Accounts>().select(Accounts::getTimezone).eq(Accounts::getOwnerId, ownerId).isNull(Accounts::getDeletedAt))
+                .stream().map(Accounts::getTimezone).filter(tz -> tz != null && !tz.isBlank()).distinct().sorted().toList());
         return PagedResponse.of(items, pg.getTotal(), page, size);
     }
 
