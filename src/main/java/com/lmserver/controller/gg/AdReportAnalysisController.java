@@ -414,6 +414,137 @@ public class AdReportAnalysisController {
         };
     }
 
+    // ═══════ Cross-User ═══════
+
+    /** 跨用户对比 — 同一产品不同用户的 CPI 聚合对比，按 avg_cpi 升序 */
+    @GetMapping("/cross-user")
+    public ApiResponse<Map<String, Object>> crossUser(
+            @RequestParam String productName,
+            @RequestParam(defaultValue = "") String fromDate,
+            @RequestParam(defaultValue = "") String toDate) {
+
+        StringBuilder where = new StringBuilder("1=1");
+        List<Object> params = new ArrayList<>();
+        String[] names = productName.split(",");
+        if (names.length == 1) { where.append(" AND product_name=?"); params.add(names[0].trim()); }
+        else { where.append(" AND product_name IN (").append(String.join(",", Collections.nCopies(names.length, "?"))).append(")"); for (String n : names) params.add(n.trim()); }
+        if (!fromDate.isBlank()) { where.append(" AND report_date >= ?"); params.add(fromDate); }
+        if (!toDate.isBlank()) { where.append(" AND report_date <= ?"); params.add(toDate); }
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            "SELECT ar.user_id, u.display_name, u.username, SUM(ar.cost) AS total_cost, SUM(ar.installs) AS total_installs, "
+            + "SUM(ar.in_app_actions) AS total_in_app, COUNT(DISTINCT ar.report_date) AS report_days "
+            + "FROM ad_reports ar LEFT JOIN users u ON ar.user_id=u.id WHERE " + where
+            + " GROUP BY ar.user_id, u.display_name, u.username", params.toArray());
+
+        List<Map<String, Object>> users = new ArrayList<>();
+        for (var r : rows) {
+            double cost = toDouble(r.get("total_cost"));
+            double inApp = toDouble(r.get("total_in_app"));
+            users.add(Map.of("user_id", r.get("user_id"), "display_name", r.get("display_name"),
+                    "username", r.get("username"), "total_cost", Math.round(cost * 100.0) / 100.0,
+                    "total_installs", ((Number) r.get("total_installs")).longValue(),
+                    "total_in_app", inApp, "avg_cpi", inApp > 0 ? Math.round(cost / inApp * 100.0) / 100.0 : 0,
+                    "report_days", r.get("report_days")));
+        }
+        users.sort((a, b) -> Double.compare(toDouble(a.get("avg_cpi")), toDouble(b.get("avg_cpi"))));
+        return ApiResponse.ok(Map.of("users", users));
+    }
+
+    // ═══════ Multi-Analysis ═══════
+
+    /** 多维自由分析 — X/Y轴指标 + 分组维度 + 散点数据，对齐 Python multi_analysis */
+    @GetMapping("/multi-analysis")
+    public ApiResponse<Map<String, Object>> multiAnalysis(
+            @RequestParam(defaultValue = "cost") String xAxis, @RequestParam(defaultValue = "cpi") String yAxis,
+            @RequestParam(defaultValue = "") String sizeBy, @RequestParam(defaultValue = "campaign") String groupBy,
+            @RequestParam(defaultValue = "") String productName, @RequestParam(defaultValue = "") String campaign,
+            @RequestParam(defaultValue = "") String region, @RequestParam(defaultValue = "") String fromDate,
+            @RequestParam(defaultValue = "") String toDate, @AuthenticationPrincipal UserPrincipal principal) {
+
+        Long userId = principal.getUserId();
+        List<Object> params = new ArrayList<>();
+        String where = buildWhere(userId, productName, region, fromDate, toDate, params);
+        if (!campaign.isBlank()) { where += " AND campaign=?"; params.add(campaign); }
+
+        String groupCol = switch (groupBy) { case "product_name" -> "product_name"; case "account" -> "account"; default -> "campaign"; };
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            "SELECT " + groupCol + " AS name, SUM(cost) AS total_cost, SUM(installs) AS total_installs, "
+            + "SUM(impressions) AS total_impressions, SUM(clicks) AS total_clicks, SUM(in_app_actions) AS total_in_app "
+            + "FROM ad_reports WHERE " + where + " GROUP BY " + groupCol, params.toArray());
+
+        List<Map<String, Object>> points = new ArrayList<>();
+        Map<String, Double> xVals = new LinkedHashMap<>(), yVals = new LinkedHashMap<>();
+        for (var r : rows) {
+            double x = computeRaw(r, xAxis), y = computeRaw(r, yAxis);
+            String name = String.valueOf(r.get("name"));
+            double sz = sizeBy.isBlank() ? 0 : computeRaw(r, sizeBy);
+            points.add(Map.of("name", name, "x", Math.round(x * 100.0) / 100.0, "y", Math.round(y * 100.0) / 100.0,
+                    sizeBy.isBlank() ? "" : "size", sz, "total_cost", Math.round(toDouble(r.get("total_cost")) * 100.0) / 100.0));
+            xVals.put(name, x); yVals.put(name, y);
+        }
+
+        // 基本统计
+        double xAvg = xVals.values().stream().mapToDouble(Double::doubleValue).average().orElse(0);
+        double yAvg = yVals.values().stream().mapToDouble(Double::doubleValue).average().orElse(0);
+
+        // Pearson 相关系数
+        double pearson = calcPearson(xVals, yVals, xAvg, yAvg);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("points", points);
+        result.put("x_axis", xAxis); result.put("y_axis", yAxis); result.put("group_by", groupBy);
+        result.put("x_avg", Math.round(xAvg * 100.0) / 100.0); result.put("y_avg", Math.round(yAvg * 100.0) / 100.0);
+        result.put("pearson_r", Math.round(pearson * 10000.0) / 10000.0);
+        result.put("insight", pearson > 0.7 ? xAxis + "与" + yAxis + "呈强正相关(r=" + String.format("%.2f", pearson) + ")"
+                : pearson < -0.7 ? xAxis + "与" + yAxis + "呈强负相关" : "无明显线性相关");
+        return ApiResponse.ok(result);
+    }
+
+    /** 多轮 AI 对话 — 带分析上下文 */
+    @PostMapping("/multi-ai-chat")
+    public ApiResponse<Map<String, Object>> multiAiChat(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, Object> body) {
+        String productName = String.valueOf(body.getOrDefault("product_name", ""));
+        String question = String.valueOf(body.getOrDefault("question", ""));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> history = (List<Map<String, Object>>) body.getOrDefault("history", List.of());
+        if (question.isBlank()) return ApiResponse.fail("请输入问题");
+
+        Long userId = principal.getUserId();
+        List<Object> params = new ArrayList<>();
+        String where = buildWhere(userId, productName, "", "", "", params);
+
+        Map<String, Object> summary = querySummary(where, params);
+        List<Map<String, Object>> campaigns = queryCampaignStats(where, params);
+
+        Map<String, Object> ctx = Map.of("summary", summary, "top_campaigns",
+                campaigns.subList(0, Math.min(10, campaigns.size())), "history", history);
+
+        return ApiResponse.ok(Map.of("question", question, "data_context", ctx,
+                "suggestion", "请前端将上下文+历史提交至AI服务获取回复"));
+    }
+
+    // ── 统计辅助 ──
+
+    private double computeRaw(Map<String, Object> r, String metric) {
+        double cost = toDouble(r.get("total_cost")), imp = toDouble(r.get("total_impressions"));
+        double clicks = toDouble(r.get("total_clicks")), inst = toDouble(r.get("total_installs"));
+        double inApp = toDouble(r.get("total_in_app"));
+        return switch (metric) { case "cost" -> cost; case "installs" -> inst; case "impressions" -> imp; case "clicks" -> clicks; case "cpi" -> cost / Math.max(inApp, 1); case "ctr" -> clicks / Math.max(imp, 1); case "cvr" -> inst / Math.max(clicks, 1); default -> cost / Math.max(inApp, 1); };
+    }
+
+    private double calcPearson(Map<String, Double> xv, Map<String, Double> yv, double xAvg, double yAvg) {
+        double cov = 0, sx = 0, sy = 0; int n = 0;
+        for (var e : xv.entrySet()) {
+            String k = e.getKey(); if (!yv.containsKey(k)) continue;
+            double dx = e.getValue() - xAvg, dy = yv.get(k) - yAvg;
+            cov += dx * dy; sx += dx * dx; sy += dy * dy; n++;
+        }
+        return n > 2 && sx > 0 && sy > 0 ? cov / Math.sqrt(sx * sy) : 0;
+    }
+
     private double toDouble(Object v) {
         if (v == null) return 0;
         if (v instanceof Number n) return n.doubleValue();
