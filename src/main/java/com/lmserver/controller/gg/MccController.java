@@ -18,6 +18,26 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
+/**
+ * MCC 管理控制器 — /api/mcc/*。
+ *
+ * <p>对齐 Python main.py mcc 段。</p>
+ * <ul>
+ * <li>GET /list — 分页+搜索+层级过滤</li>
+ * <li>POST /create — 创建(含重复检测)</li>
+ * <li>PUT /{id} — 更新(含循环引用检测)</li>
+ * <li>DELETE /{id} — 删除(含子MCC/账户/产品关联检测)</li>
+ * <li>POST /batch-delete — 批量删除(逐条检测+跳过详情)</li>
+ * <li>POST /{mid}/link — 关联到上游MCC(含循环引用检测)</li>
+ * <li>GET /options — 下拉选项</li>
+ * </ul>
+ *
+ * <h3>循环引用检测</h3>
+ * 更新或 link 时，沿 parentMccId 链向上遍历，确保不会形成环。
+ *
+ * <h3>删除保护</h3>
+ * 删除前检查是否存在子MCC、关联账户、关联产品，存在则拒绝并返回原因。
+ */
 @RestController
 @RequestMapping("/api/mcc")
 @RequiredArgsConstructor

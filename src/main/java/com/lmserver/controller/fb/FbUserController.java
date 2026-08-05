@@ -9,6 +9,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.stream.Collectors;
 
+/**
+ * FB 平台用户查询 — /api/fb/users。
+ * 过滤规则：排除 hidden 角色，只返回 platform='fb' 或 role='developer' 的用户。
+ * 返回字段：id / username / display_name / platform / role（密码已置null）。
+ */
 @RestController
 @RequestMapping("/api/fb/users")
 @RequiredArgsConstructor

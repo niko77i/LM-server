@@ -22,6 +22,25 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 图片抓取控制器 — 对齐 Python main.py scrape 段。
+ *
+ * <h3>端点</h3>
+ * <ul>
+ * <li>GET /api/scrape/cache              — 全量缓存列表</li>
+ * <li>GET /api/scrape/cache/{packageName} — 按包名查缓存</li>
+ * <li>DELETE /api/scrape/cache/{packageName} — 清除缓存+文件</li>
+ * <li>POST /api/scrape/trigger             — 触发抓取：从Google Play页面提取截图URL+Logo → 下载PNG → 写缓存</li>
+ * <li>GET /api/scrape/download?packageName= — 下载已抓取的截图文件</li>
+ * </ul>
+ *
+ * <h3>抓取流程</h3>
+ * 1. Jsoup 访问 Google Play 页面<br>
+ * 2. 解析 img 标签提取截图URL（含 screen/screenshot 关键字）<br>
+ * 3. 提取 Logo URL（含 icon/logo 关键字）<br>
+ * 4. 逐个下载截图（最多10张）+ Logo<br>
+ * 5. 写入 scrape_cache 表 + 本地 scrape_images/ 目录
+ */
 @Slf4j
 @RestController
 @RequestMapping("/api/scrape")

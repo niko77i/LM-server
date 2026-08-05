@@ -16,7 +16,26 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 /**
- * 广告报告分析控制器 — 对齐 Python ad_reports_dashboard/trends/compare/dates/analyze。
+ * 广告报告分析控制器 — 对齐 Python main.py ad_reports_dashboard / trends / compare / dates / analyze。
+ *
+ * <h3>端点</h3>
+ * <ul>
+ * <li>GET /api/ad-reports/dashboard — 仪表盘：汇总指标 + 环比 + 异常检测(cost_spike/cpi_spike) + Campaign分组 + 素材关联数</li>
+ * <li>GET /api/ad-reports/trends   — 趋势图：按 metric(cost/cpi/ctr/cvr等) × group_by(product/campaign) × 日期 生成时序数据</li>
+ * <li>GET /api/ad-reports/compare  — 对比：按 product/campaign 聚合后排序对比</li>
+ * <li>GET /api/ad-reports/stats    — 简版统计：totalCost/Impressions/Clicks/RecordCount</li>
+ * <li>GET /api/ad-reports/dates    — 日期标记：返回有数据的日期→计数映射，供前端日历高亮</li>
+ * <li>POST /api/ad-reports/analyze — AI分析：构建数据摘要上下文，供前端提交AI服务分析</li>
+ * </ul>
+ *
+ * <h3>异常检测规则</h3>
+ * <ul>
+ * <li>cost_spike — 近3天日均花费 &gt; 前7天均值 × 1.5 且安装下降</li>
+ * <li>cpi_spike  — 近3天CPI &gt; 前7天CPI × 1.3</li>
+ * </ul>
+ *
+ * <h3>环比</h3>
+ * 若传入 from_date / to_date，自动计算前一等长周期数据，返回 cost/installs/cpi 变化百分比。
  */
 @Slf4j
 @RestController

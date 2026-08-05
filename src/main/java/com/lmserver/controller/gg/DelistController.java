@@ -17,6 +17,23 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * 掉包检测控制器 — 对齐 Python delist_checker + delist_notifications 模块。
+ *
+ * <h3>端点</h3>
+ * <ul>
+ * <li>GET /api/delist/checks              — 分页查询掉包检测结果</li>
+ * <li>GET /api/delist/product/{productId} — 按产品查检测结果</li>
+ * <li>GET /api/delist/pending             — 当前用户的待处理通知</li>
+ * <li>POST /api/delist/dismiss            — 关闭通知</li>
+ * <li>POST /api/products/{pid}/check-delist — 执行掉包检测（爬Google Play检查下架）</li>
+ * </ul>
+ *
+ * <h3>检测逻辑</h3>
+ * 对产品下所有包，通过 Jsoup 访问 Google Play 页面，检测是否返回 404
+ * 或页面内容包含 "not found" / "not available" 等下架标志。
+ * 检测到掉包后自动创建 delist_notifications 记录。
+ */
 @Slf4j
 @RestController
 @RequiredArgsConstructor

@@ -15,6 +15,28 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * FB Pixel 和 Pixel BM 管理控制器 — 对齐 Python fb_routes.py pixel-bms + pixels 段。
+ *
+ * Pixel BM (7接口):
+ * <ul>
+ * <li>GET /api/fb/pixel-bms/list           — 分页+搜索+BMs像素计数</li>
+ * <li>POST /api/fb/pixel-bms/create        — 新建 Pixel BM</li>
+ * <li>PUT /api/fb/pixel-bms/{id}           — 更新名称/备注</li>
+ * <li>DELETE /api/fb/pixel-bms/{id}        — 软删除(deleted_at+status)</li>
+ * <li>GET /api/fb/pixel-bms/options        — 下拉选项(过滤已删除)</li>
+ * <li>GET /api/fb/pixel-bms/{bid}/pixels   — 查看BM下的像素列表</li>
+ * <li>POST /api/fb/pixel-bms/{bid}/pixels  — 在BM下创建像素</li>
+ * </ul>
+ *
+ * Pixel (5接口):
+ * <ul>
+ * <li>GET /api/fb/pixels/list    — 分页+搜索+JOIN BM名称</li>
+ * <li>POST /api/fb/pixels/create — 创建像素</li>
+ * <li>PUT /api/fb/pixels/{id}    — 更新像素名</li>
+ * <li>DELETE /api/fb/pixels/{id} — 物理删除</li>
+ * </ul>
+ */
 @RestController
 @RequestMapping("/api/fb")
 @RequiredArgsConstructor

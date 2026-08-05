@@ -17,6 +17,20 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * 审计日志控制器 — 对齐 Python audit-log 模块。
+ *
+ * <ul>
+ * <li>GET /api/audit-log/list         — 分页查询所有操作日志</li>
+ * <li>POST /api/audit-log/restore/{id} — 从日志快照恢复已删除的产品</li>
+ * </ul>
+ *
+ * 审计日志在以下操作时自动写入：
+ * <ul>
+ * <li>产品永久删除时 — 记录 action="delete_product"，含产品名</li>
+ * <li>产品恢复时 — 在 detail 字段追加 restored_by</li>
+ * </ul>
+ */
 @Slf4j
 @RestController
 @RequestMapping("/api/audit-log")
@@ -27,6 +41,9 @@ public class AuditController {
     @Autowired private ProductsMapper productsMapper;
     @Autowired private PackagesMapper packagesMapper;
 
+    /**
+     * 审计日志分页列表，按创建时间倒序。
+     */
     @GetMapping("/list")
     public com.lmserver.dto.response.PagedResponse<AuditLog> list(
             @AuthenticationPrincipal UserPrincipal principal,
