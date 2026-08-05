@@ -464,7 +464,7 @@ async function loadProductAssetMap() {
 async function loadAssetProductOptions() {
   try {
     const res = await api.get('/youtube/asset-products')
-    assetProductOptions.value = res.products || []
+    assetProductOptions.value = res.data || []
   } catch { assetProductOptions.value = [] }
 }
 

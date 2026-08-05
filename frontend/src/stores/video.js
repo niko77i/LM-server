@@ -21,7 +21,7 @@ export const useVideoStore = defineStore('video', {
     async loadHistory() { const res = await videoApi.historyList(); this.history = res.users || res.packages || {}; return res },
     async saveHistory(entry) { return videoApi.historySave({ entry }) },
     async deleteHistory(pkg, indices) { return videoApi.historyDelete({ pkg, indices }) },
-    async loadFonts() { const res = await videoApi.fontsList(); this.fonts = res.fonts; return res },
+    async loadFonts() { const res = await videoApi.fontsList(); this.fonts = res.data || []; return res },
     async audioReplace(body) { return videoApi.audioReplace(body) },
   },
 })

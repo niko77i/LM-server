@@ -91,7 +91,7 @@ export const useAccountStore = defineStore('accounts', {
     // ---- option actions: agents ----
     async loadAgents() {
       const res = await optionApi.agents.list()
-      this.options.agents = res.agents || []
+      this.options.agents = res.items || []
       return this.options.agents
     },
     async createAgent(name) { const res = await optionApi.agents.create(name); await this.loadAgents(); return res },
@@ -101,7 +101,7 @@ export const useAccountStore = defineStore('accounts', {
     // ---- option actions: statuses ----
     async loadStatuses() {
       const res = await optionApi.statuses.list()
-      this.options.statuses = res.statuses || []
+      this.options.statuses = res.items || []
       return this.options.statuses
     },
     async createStatus(name) { const res = await optionApi.statuses.create(name); await this.loadStatuses(); return res },
@@ -111,7 +111,7 @@ export const useAccountStore = defineStore('accounts', {
     // ---- option actions: mcc levels ----
     async loadMccLevels() {
       const res = await optionApi.mccLevels.list()
-      this.options.mccLevels = res.mcc_levels || []
+      this.options.mccLevels = res.items || []
       return this.options.mccLevels
     },
     async createMccLevel(name) { const res = await optionApi.mccLevels.create(name); await this.loadMccLevels(); return res },
@@ -121,7 +121,7 @@ export const useAccountStore = defineStore('accounts', {
     // ---- option actions: sales persons ----
     async loadSalesPersons() {
       const res = await optionApi.salesPersons.list()
-      this.options.salesPersons = res.sales_persons || []
+      this.options.salesPersons = res.items || []
       return this.options.salesPersons
     },
     async createSalesPerson(name) { const res = await optionApi.salesPersons.create(name); await this.loadSalesPersons(); return res },

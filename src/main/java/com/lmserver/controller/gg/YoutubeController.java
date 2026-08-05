@@ -8,16 +8,21 @@ import com.lmserver.entity.common.Tags;
 import com.lmserver.entity.gg.VideoConsumption;
 import com.lmserver.entity.gg.Videos;
 import com.lmserver.mapper.common.TagsMapper;
-import com.lmserver.mapper.gg.VideoConsumptionMapper;
-import com.lmserver.mapper.gg.VideosMapper;
+import com.lmserver.mapper.gg.*;
+import com.lmserver.entity.gg.ProductAssets;
+import com.lmserver.entity.gg.Products;
 import com.lmserver.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
+import com.lmserver.mapper.gg.ProductAssetsMapper;
+import com.lmserver.entity.gg.ProductAssets;
+import com.lmserver.entity.gg.Products;
 
 /**
  * YouTube 视频管理控制器 — /api/youtube/*，视频CRUD/批量导入/消耗追踪/标签配置。
@@ -30,6 +35,8 @@ public class YoutubeController {
     private final VideosMapper videosMapper;
     private final VideoConsumptionMapper consumptionMapper;
     private final TagsMapper tagsMapper;
+    @Autowired private ProductAssetsMapper productAssetsMapper;
+    @Autowired private com.lmserver.mapper.gg.ProductsMapper productsMapper;
 
         @GetMapping("/list")
     public PagedResponse<Videos> list(@AuthenticationPrincipal UserPrincipal principal,
@@ -205,5 +212,38 @@ public class YoutubeController {
             } catch (Exception ignored) {}
         }
         return ApiResponse.ok(Map.of("filled", filled, "total", videos.size()));
+    }
+
+    /** 有成效素材的产品名列表 — 对齐 Python youtube_asset_products */
+    @GetMapping("/asset-products")
+    public ApiResponse<List<String>> assetProducts() {
+        var rows = productAssetsMapper.selectList(
+                new LambdaQueryWrapper<ProductAssets>().select(ProductAssets::getProductId).groupBy(ProductAssets::getProductId));
+        List<String> names = new ArrayList<>();
+        for (var pa : rows) {
+            Products p = productsMapper.selectById(pa.getProductId());
+            if (p != null && p.getProductName() != null) names.add(p.getProductName());
+        }
+        return ApiResponse.ok(names);
+    }
+
+    /** 批量查询视频关联的产品名 — 对齐 Python youtube_product_assets */
+    @GetMapping("/product-assets")
+    public ApiResponse<Map<String, List<String>>> productAssets(@RequestParam(defaultValue = "") String videoIds) {
+        if (videoIds.isBlank()) return ApiResponse.ok(Map.of());
+        List<String> ids = List.of(videoIds.split(","));
+        Map<String, List<String>> mapping = new LinkedHashMap<>();
+        for (String vid : ids) {
+            vid = vid.trim();
+            var assets = productAssetsMapper.selectList(
+                    new LambdaQueryWrapper<ProductAssets>().eq(ProductAssets::getVideoId, vid));
+            List<String> pnames = new ArrayList<>();
+            for (var a : assets) {
+                Products p = productsMapper.selectById(a.getProductId());
+                if (p != null) pnames.add(p.getProductName());
+            }
+            mapping.put(vid, pnames);
+        }
+        return ApiResponse.ok(mapping);
     }
 }
