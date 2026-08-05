@@ -1,38 +1,55 @@
 package com.lmserver.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lmserver.dto.response.ApiResponse;
-import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.common.AuditLog;
+import com.lmserver.entity.gg.Packages;
+import com.lmserver.entity.gg.Products;
 import com.lmserver.mapper.common.AuditLogMapper;
+import com.lmserver.mapper.gg.PackagesMapper;
+import com.lmserver.mapper.gg.ProductsMapper;
+import com.lmserver.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-/**
- * 审计日志控制器 — /api/audit-log/*，操作审计记录的查询
- */
 
+import java.time.LocalDateTime;
+import java.util.*;
+
+@Slf4j
 @RestController
 @RequestMapping("/api/audit-log")
 @RequiredArgsConstructor
 public class AuditController {
 
-    private final AuditLogMapper mapper;
+    @Autowired private AuditLogMapper auditLogMapper;
+    @Autowired private ProductsMapper productsMapper;
+    @Autowired private PackagesMapper packagesMapper;
 
     @GetMapping("/list")
-    /** 分页列表查询 — 支持多条件筛选 */
-    public PagedResponse<AuditLog> list(@RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size, @RequestParam(required = false) String action) {
-        var qw = new LambdaQueryWrapper<AuditLog>();
-        if (action != null && !action.isBlank()) qw.eq(AuditLog::getAction, action);
-        qw.orderByDesc(AuditLog::getCreatedAt);
-        var pg = mapper.selectPage(new Page<>(page, size), qw);
-        return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
+    public com.lmserver.dto.response.PagedResponse<AuditLog> list(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var qw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AuditLog>()
+                .orderByDesc(AuditLog::getCreatedAt);
+        var pg = auditLogMapper.selectPage(new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size), qw);
+        return com.lmserver.dto.response.PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
     }
 
-    @GetMapping("/{id}")
-    public ApiResponse<AuditLog> detail(@PathVariable Long id) {
-        AuditLog log = mapper.selectById(id);
-        return log != null ? ApiResponse.ok(log) : ApiResponse.fail("不存在");
+    @PostMapping("/restore/{logId}")
+    public ApiResponse<Void> restore(@PathVariable Long logId, @AuthenticationPrincipal UserPrincipal principal) {
+        AuditLog log = auditLogMapper.selectById(logId);
+        if (log == null || !"delete_product".equals(log.getAction())) return ApiResponse.fail("无法恢复");
+        Products p = new Products();
+        p.setProductName(log.getTargetName());
+        p.setOwnerId(principal.getUserId());
+        p.setIsArchived(0L);
+        p.setCreatedAt(LocalDateTime.now());
+        productsMapper.insert(p);
+        log.setDetail("{\"restored_by\":" + principal.getUserId() + "}");
+        auditLogMapper.updateById(log);
+        return ApiResponse.ok();
     }
 }
