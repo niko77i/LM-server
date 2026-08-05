@@ -118,18 +118,22 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public java.util.List<java.util.Map<String, Object>> getUserNames(com.lmserver.security.UserPrincipal principal) {
         var users = usersMapper.selectList(null);
-        return users.stream().map(u -> {
-            java.util.Map<String, Object> m = new java.util.HashMap<>();
-            m.put("id", u.getId());
-            m.put("username", u.getUsername());
-            m.put("display_name", u.getDisplayName());
-            m.put("platform", u.getPlatform());
-            return m;
-        }).toList();
+        boolean isDev = "developer".equals(principal.getRole());
+        return users.stream()
+                .filter(u -> !"hidden".equals(u.getRole()))
+                .filter(u -> isDev || !"developer".equals(u.getRole()))
+                .map(u -> {
+                    java.util.Map<String, Object> m = new java.util.HashMap<>();
+                    m.put("id", u.getId()); m.put("username", u.getUsername());
+                    m.put("display_name", u.getDisplayName()); m.put("platform", u.getPlatform());
+                    return m;
+                }).toList();
     }
 
     private UserInfo toUserInfo(Users u) {
         return UserInfo.builder().id(u.getId()).username(u.getUsername())
-                .role(u.getRole()).platform(u.getPlatform()).displayName(u.getDisplayName()).build();
+                .role(u.getRole()).platform(u.getPlatform()).displayName(u.getDisplayName())
+                .customName(u.getCustomName()).email(u.getEmail())
+                .telegramUsername(u.getTelegramUsername()).build();
     }
 }

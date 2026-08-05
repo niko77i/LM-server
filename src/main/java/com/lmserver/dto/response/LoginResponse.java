@@ -32,5 +32,8 @@ public class LoginResponse {
         private String role;
         private String platform;
         private String displayName;
+        private String customName;
+        private String email;
+        private String telegramUsername;
     }
 }
