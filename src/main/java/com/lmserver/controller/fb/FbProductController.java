@@ -1,18 +1,20 @@
 package com.lmserver.controller.fb;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lmserver.dto.response.ApiResponse;
 import com.lmserver.dto.response.PagedResponse;
-import com.lmserver.entity.fb.FbProducts;
+import com.lmserver.entity.fb.*;
+import com.lmserver.mapper.fb.*;
 import com.lmserver.security.UserPrincipal;
 import com.lmserver.service.FbService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-/**
- * FB 产品管理控制器 — /api/fb/products/*，FB产品的CRUD+下拉选项
- */
+import java.time.LocalDateTime;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/fb/products")
@@ -20,53 +22,155 @@ import java.util.Map;
 public class FbProductController {
 
     private final FbService fbService;
+    @Autowired private FbProductsMapper productsMapper;
+    @Autowired private FbProductBmsMapper productBmsMapper;
+    @Autowired private FbProductRunnersMapper productRunnersMapper;
+    @Autowired private FbLinesMapper linesMapper;
 
     @GetMapping("/list")
-    /** 分页列表查询 — 支持多条件筛选 */
-    public PagedResponse<FbProducts> list(@AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String region) {
-        return fbService.listProducts(principal.getUserId(), page, size, search, region);
+    public PagedResponse<FbProducts> list(@AuthenticationPrincipal UserPrincipal p,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search, @RequestParam(required = false) String region,
+            @RequestParam(required = false) String status, @RequestParam(required = false) Boolean archived) {
+        return fbService.listProducts(p.getUserId(), page, size, search, region);
+    }
+
+    @GetMapping("/options") public ApiResponse<?> options(@AuthenticationPrincipal UserPrincipal p) {
+        return ApiResponse.ok(fbService.productOptions(p.getUserId()));
+    }
+
+    /** runner-products — 返回当前用户作为在跑人员的产品及对应线 */
+    @GetMapping("/runner-products")
+    public ApiResponse<List<Map<String, Object>>> runnerProducts(@AuthenticationPrincipal UserPrincipal p) {
+        var prs = productRunnersMapper.selectList(
+                new LambdaQueryWrapper<FbProductRunners>().eq(FbProductRunners::getUserId, p.getUserId()));
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (var pr : prs) {
+            FbProducts prod = productsMapper.selectById(pr.getProductId());
+            if (prod == null || prod.getIsArchived() != null && prod.getIsArchived() == 1) continue;
+            var lines = linesMapper.selectList(
+                    new LambdaQueryWrapper<FbLines>().eq(FbLines::getProductId, prod.getId()));
+            result.add(Map.of("id", prod.getId(), "product_name", prod.getProductName(),
+                    "lines", lines.stream().map(l -> Map.of("id", l.getId(), "line_name", l.getLineName())).toList()));
+        }
+        return ApiResponse.ok(result);
     }
 
     @GetMapping("/{id}")
-    /** 获取单条记录详情 — 按主键 ID 查询 */
     public ApiResponse<FbProducts> detail(@PathVariable Long id) {
         FbProducts p = fbService.getProductById(id);
         return p != null ? ApiResponse.ok(p) : ApiResponse.fail("产品不存在");
     }
 
     @PostMapping("/create")
-    /** 新增记录 — 返回创建后的完整对象 */
-    public ApiResponse<FbProducts> create(@AuthenticationPrincipal UserPrincipal principal,
+    public ApiResponse<FbProducts> create(@AuthenticationPrincipal UserPrincipal p,
             @RequestBody Map<String, Object> body) {
         String name = (String) body.get("product_name");
         if (name == null || name.isBlank()) return ApiResponse.fail("产品名不能为空");
-        Long spId = body.get("sales_person_id") != null ? Long.valueOf(body.get("sales_person_id").toString()) : null;
-        Double ratio = body.get("agency_ratio") != null ? Double.valueOf(body.get("agency_ratio").toString()) : null;
-        return ApiResponse.ok(fbService.createProduct(principal.getUserId(), name,
-                (String) body.get("kpi"), (String) body.get("region"), spId, ratio));
+        Long spId = lng(body, "sales_person_id");
+        Double ratio = dbl(body, "agency_ratio");
+        FbProducts prod = fbService.createProduct(p.getUserId(), name, (String) body.get("kpi"),
+                (String) body.get("region"), spId, ratio);
+
+        // 处理关联数据
+        @SuppressWarnings("unchecked")
+        List<Long> bmIds = (List<Long>) body.getOrDefault("bm_ids", List.of());
+        for (Long bmId : bmIds) {
+            FbProductBms pb = new FbProductBms(); pb.setProductId(prod.getId()); pb.setBmId(bmId);
+            productBmsMapper.insert(pb);
+        }
+        @SuppressWarnings("unchecked")
+        List<Long> runnerIds = (List<Long>) body.getOrDefault("runner_ids", List.of());
+        for (Long uid : runnerIds) {
+            FbProductRunners pr = new FbProductRunners(); pr.setProductId(prod.getId()); pr.setUserId(uid);
+            productRunnersMapper.insert(pr);
+        }
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> lines = (List<Map<String, String>>) body.getOrDefault("lines", List.of());
+        for (var l : lines) {
+            FbLines fl = new FbLines(); fl.setProductId(prod.getId());
+            fl.setLineName(l.get("line_name")); fl.setLink(l.get("link"));
+            if (l.containsKey("pixel_id")) fl.setPixelId(Long.valueOf(l.get("pixel_id")));
+            linesMapper.insert(fl);
+        }
+        return ApiResponse.ok(prod);
     }
 
     @PutMapping("/{id}")
-    /** 更新记录 — 部分字段更新，只改传入的非 null 字段 */
     public ApiResponse<FbProducts> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        Long spId = body.get("sales_person_id") != null ? Long.valueOf(body.get("sales_person_id").toString()) : null;
-        Double ratio = body.get("agency_ratio") != null ? Double.valueOf(body.get("agency_ratio").toString()) : null;
-        FbProducts p = fbService.updateProduct(id, (String) body.get("product_name"),
+        Long spId = lng(body, "sales_person_id");
+        Double ratio = dbl(body, "agency_ratio");
+        FbProducts prod = fbService.updateProduct(id, (String) body.get("product_name"),
                 (String) body.get("kpi"), (String) body.get("region"), spId, ratio);
-        return p != null ? ApiResponse.ok(p) : ApiResponse.fail("产品不存在");
+        if (prod == null) return ApiResponse.fail("产品不存在");
+
+        // 更新关联：bm_ids — 先删后插
+        @SuppressWarnings("unchecked")
+        List<Long> bmIds = (List<Long>) body.getOrDefault("bm_ids", List.of());
+        if (!bmIds.isEmpty()) {
+            productBmsMapper.delete(new LambdaQueryWrapper<FbProductBms>().eq(FbProductBms::getProductId, id));
+            for (Long bmId : bmIds) {
+                FbProductBms pb = new FbProductBms(); pb.setProductId(id); pb.setBmId(bmId);
+                productBmsMapper.insert(pb);
+            }
+        }
+        @SuppressWarnings("unchecked")
+        List<Long> runnerIds = (List<Long>) body.getOrDefault("runner_ids", List.of());
+        if (!runnerIds.isEmpty()) {
+            productRunnersMapper.delete(new LambdaQueryWrapper<FbProductRunners>().eq(FbProductRunners::getProductId, id));
+            for (Long uid : runnerIds) {
+                FbProductRunners pr = new FbProductRunners(); pr.setProductId(id); pr.setUserId(uid);
+                productRunnersMapper.insert(pr);
+            }
+        }
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> lines = (List<Map<String, String>>) body.getOrDefault("lines", List.of());
+        if (!lines.isEmpty()) {
+            linesMapper.delete(new LambdaQueryWrapper<FbLines>().eq(FbLines::getProductId, id));
+            for (var l : lines) {
+                FbLines fl = new FbLines(); fl.setProductId(id);
+                fl.setLineName(l.get("line_name")); fl.setLink(l.get("link"));
+                if (l.containsKey("pixel_id")) fl.setPixelId(Long.valueOf(l.get("pixel_id")));
+                linesMapper.insert(fl);
+            }
+        }
+        return ApiResponse.ok(prod);
     }
 
+    /** 软删除 — 归档 */
     @DeleteMapping("/{id}")
-    /** 删除记录 */
-    public ApiResponse<Void> delete(@PathVariable Long id) { fbService.deleteProduct(id); return ApiResponse.ok(); }
-
-    @GetMapping("/options")
-    /** 获取下拉选项 — 返回 id + name 的简略列表 */
-    public ApiResponse<?> options(@AuthenticationPrincipal UserPrincipal principal) {
-        return ApiResponse.ok(fbService.productOptions(principal.getUserId()));
+    public ApiResponse<Void> delete(@PathVariable Long id, @AuthenticationPrincipal UserPrincipal p) {
+        FbProducts prod = productsMapper.selectById(id);
+        if (prod != null && prod.getOwnerId().equals(p.getUserId())) {
+            prod.setIsArchived(1L); productsMapper.updateById(prod);
+        }
+        return ApiResponse.ok();
     }
+
+    @PostMapping("/{id}/restore")
+    public ApiResponse<Void> restore(@PathVariable Long id, @AuthenticationPrincipal UserPrincipal p) {
+        FbProducts prod = productsMapper.selectById(id);
+        if (prod != null && prod.getOwnerId().equals(p.getUserId())) {
+            prod.setIsArchived(0L); productsMapper.updateById(prod);
+        }
+        return ApiResponse.ok();
+    }
+
+    @GetMapping("/{id}/detail")
+    public ApiResponse<Map<String, Object>> fullDetail(@PathVariable Long id) {
+        FbProducts prod = productsMapper.selectById(id);
+        if (prod == null) return ApiResponse.fail("不存在");
+        Map<String, Object> m = new HashMap<>();
+        m.put("product", prod);
+        m.put("bms", productBmsMapper.selectList(
+                new LambdaQueryWrapper<FbProductBms>().eq(FbProductBms::getProductId, id)));
+        m.put("runners", productRunnersMapper.selectList(
+                new LambdaQueryWrapper<FbProductRunners>().eq(FbProductRunners::getProductId, id)));
+        m.put("lines", linesMapper.selectList(
+                new LambdaQueryWrapper<FbLines>().eq(FbLines::getProductId, id)));
+        return ApiResponse.ok(m);
+    }
+
+    private Long lng(Map<String, Object> m, String k) { Object v = m.get(k); return v != null ? Long.valueOf(v.toString()) : null; }
+    private Double dbl(Map<String, Object> m, String k) { Object v = m.get(k); return v != null ? Double.valueOf(v.toString()) : null; }
 }
