@@ -18,8 +18,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * GG 账户管理控制器 — v1.5: 21 接口。
@@ -55,28 +54,26 @@ public class AccountController {
     }
 
     @PutMapping("/{id}") public ApiResponse<Accounts> update(@PathVariable Long id,
-            @RequestBody Map<String, Object> body) {
-        Accounts a = accountService.update(id, (String)body.get("name"), lng(body,"mcc_id"),
-                lng(body,"agent_id"), lng(body,"status_id"), (String)body.get("timezone"));
-        return a != null ? ApiResponse.ok(a) : ApiResponse.fail("不存在");
+            @AuthenticationPrincipal UserPrincipal p, @RequestBody Map<String, Object> body) {
+        Accounts a = accountService.update(id, p.getUserId(),
+                (String)body.get("name"), lng(body,"mcc_id"), lng(body,"agent_id"),
+                lng(body,"status_id"), (String)body.get("timezone"));
+        return a != null ? ApiResponse.ok(a) : ApiResponse.fail("不存在或无权限");
     }
 
-    @DeleteMapping("/{id}") public ApiResponse<Void> delete(@PathVariable Long id) {
-        accountService.delete(id); return ApiResponse.ok();
+    @DeleteMapping("/{id}") public ApiResponse<Void> delete(@PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal p) {
+        accountService.delete(id, p.getUserId()); return ApiResponse.ok();
     }
 
-    @PostMapping("/{id}/restore") public ApiResponse<Void> restore(@PathVariable Long id) {
-        Accounts a = accountsMapper.selectById(id);
-        if (a != null) { a.setDeletedAt(null); accountsMapper.updateById(a); }
-        return ApiResponse.ok();
+    @PostMapping("/{id}/restore") public ApiResponse<Void> restore(@PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal p) {
+        accountService.restore(id, p.getUserId()); return ApiResponse.ok();
     }
 
-    @DeleteMapping("/{id}/permanent") public ApiResponse<Void> permanentDelete(@PathVariable Long id) {
-        rechargeRecordsMapper.delete(new LambdaQueryWrapper<RechargeRecords>().eq(RechargeRecords::getAccountId,
-                accountsMapper.selectById(id) != null ? accountsMapper.selectById(id).getAccountId() : ""));
-        mccHistoryMapper.delete(new LambdaQueryWrapper<AccountMccHistory>().eq(AccountMccHistory::getAccountId, id));
-        accountsMapper.deleteById(id);
-        return ApiResponse.ok();
+    @DeleteMapping("/{id}/permanent") public ApiResponse<Void> permanentDelete(@PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal p) {
+        accountService.permanentDelete(id, p.getUserId()); return ApiResponse.ok();
     }
 
     @GetMapping("/deleted") public PagedResponse<Accounts> deleted(@AuthenticationPrincipal UserPrincipal p,
@@ -92,15 +89,14 @@ public class AccountController {
 
     @PostMapping("/batch-delete") public ApiResponse<Integer> batchDelete(@AuthenticationPrincipal UserPrincipal p,
             @RequestBody Map<String, List<Long>> body) {
-        int c = 0; for (Long id : body.getOrDefault("ids", List.of())) { accountService.delete(id); c++; } return ApiResponse.ok(c);
+        return ApiResponse.ok(accountService.batchDelete(body.getOrDefault("ids", List.of()), p.getUserId()));
     }
 
     @PostMapping("/batch-update") public ApiResponse<Integer> batchUpdate(@AuthenticationPrincipal UserPrincipal p,
             @RequestBody Map<String, Object> body) {
         @SuppressWarnings("unchecked") List<Long> ids = (List<Long>) body.getOrDefault("ids", List.of());
-        int c = 0; for (Long id : ids) { accountService.update(id, str(body,"name"), lng(body,"mcc_id"),
-                lng(body,"agent_id"), lng(body,"status_id"), str(body,"timezone")); c++; }
-        return ApiResponse.ok(c);
+        return ApiResponse.ok(accountService.batchUpdate(ids, p.getUserId(), str(body,"name"),
+                lng(body,"mcc_id"), lng(body,"agent_id"), lng(body,"status_id"), str(body,"timezone")));
     }
 
     @PostMapping("/sync-from-sheet") public ApiResponse<SyncResult> syncFromSheet(
@@ -129,6 +125,94 @@ public class AccountController {
     @PostMapping("/batch-lookup") public ApiResponse<List<Accounts>> batchLookup(@RequestBody Map<String, List<String>> body) {
         return ApiResponse.ok(accountsMapper.selectList(new LambdaQueryWrapper<Accounts>()
                 .in(Accounts::getAccountId, body.getOrDefault("account_ids", List.of()))));
+    }
+
+    /** 批量创建 — 对齐 Python batch-create */
+    @PostMapping("/batch-create")
+    public ApiResponse<Map<String, Object>> batchCreate(@AuthenticationPrincipal UserPrincipal p,
+            @RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) body.getOrDefault("items", List.of());
+        int created = 0;
+        List<String> skipped = new ArrayList<>();
+        for (var item : items) {
+            try {
+                accountService.create(p.getUserId(), str(item, "name"), str(item, "account_id"),
+                        lng(item, "mcc_id"), resolveAgentId(str(item, "agent")), resolveStatusId(str(item, "status")),
+                        str(item, "timezone"));
+                created++;
+            } catch (Exception e) {
+                skipped.add(str(item, "account_id") + ": " + e.getMessage());
+            }
+        }
+        return ApiResponse.ok(Map.of("created", created, "skipped", skipped));
+    }
+
+    /** 账户归属转移 — 对齐 Python reassign */
+    @PutMapping("/{id}/reassign")
+    public ApiResponse<Accounts> reassign(@PathVariable Long id, @AuthenticationPrincipal UserPrincipal p,
+            @RequestBody Map<String, Object> body) {
+        Accounts a = accountsMapper.selectById(id);
+        if (a == null) return ApiResponse.fail("账户不存在");
+        if (a.getOwnerId().equals(p.getUserId())) return ApiResponse.fail("账户已归属于你");
+        // 记录 MCC 变更历史
+        if (body.containsKey("mcc_id")) {
+            AccountMccHistory h = new AccountMccHistory();
+            h.setAccountId(id);
+            h.setOldMccId(a.getMccId());
+            h.setNewMccId(lng(body, "mcc_id"));
+            h.setChangedBy(p.getUserId());
+            h.setChangeType("reassign");
+            h.setCreatedAt(LocalDateTime.now());
+            mccHistoryMapper.insert(h);
+        }
+        a.setOwnerId(p.getUserId());
+        if (body.containsKey("name")) a.setName(str(body, "name"));
+        if (body.containsKey("mcc_id")) a.setMccId(lng(body, "mcc_id"));
+        if (body.containsKey("agent_id")) a.setAgentId(lng(body, "agent_id"));
+        if (body.containsKey("status_id")) a.setStatusId(lng(body, "status_id"));
+        if (body.containsKey("timezone")) a.setTimezone(str(body, "timezone"));
+        a.setUpdatedAt(LocalDateTime.now());
+        accountsMapper.updateById(a);
+        return ApiResponse.ok(a);
+    }
+
+    /** 删除单条 MCC 变更历史 */
+    @DeleteMapping("/{aid}/mcc-history/{hid}")
+    public ApiResponse<Void> deleteMccHistory(@PathVariable Long aid, @PathVariable Long hid) {
+        AccountMccHistory h = mccHistoryMapper.selectById(hid);
+        if (h != null && h.getAccountId().equals(aid)) mccHistoryMapper.deleteById(hid);
+        return ApiResponse.ok();
+    }
+
+    // ── agent/status 文本名自动解析 ──
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.lmserver.mapper.common.AgentsMapper agentsMapper;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.lmserver.mapper.common.AccountStatusesMapper statusesMapper;
+
+    private Long resolveAgentId(String name) {
+        if (name == null || name.isBlank()) return null;
+        var existing = agentsMapper.selectList(
+                new LambdaQueryWrapper<com.lmserver.entity.common.Agents>().eq(com.lmserver.entity.common.Agents::getName, name));
+        if (!existing.isEmpty()) return existing.get(0).getId();
+        com.lmserver.entity.common.Agents a = new com.lmserver.entity.common.Agents();
+        a.setName(name);
+        agentsMapper.insert(a);
+        return a.getId();
+    }
+
+    private Long resolveStatusId(String name) {
+        if (name == null || name.isBlank()) return null;
+        var existing = statusesMapper.selectList(
+                new LambdaQueryWrapper<com.lmserver.entity.common.AccountStatuses>().eq(com.lmserver.entity.common.AccountStatuses::getName, name));
+        if (!existing.isEmpty()) return existing.get(0).getId();
+        com.lmserver.entity.common.AccountStatuses s = new com.lmserver.entity.common.AccountStatuses();
+        s.setName(name);
+        s.setPlatform("gg");
+        statusesMapper.insert(s);
+        return s.getId();
     }
 
     private Long lng(Map<String,Object> m, String k) { Object v=m.get(k); return v!=null ? Long.valueOf(v.toString()) : null; }

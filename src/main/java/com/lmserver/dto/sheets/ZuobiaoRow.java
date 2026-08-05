@@ -5,43 +5,70 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * GG 做表行数据 — 14 列映射 A-N。
- * 列: 日期|运营|客户名称|商务|投放国家|渠道号|系列名|包名|账户ID|素材图|落地页|账号消耗(¥)|广告系列|利润|客户实际消耗
- * M = F*L (利润), N = F-K+M (客户实际消耗)
+ * GG 做表行数据 — 对齐 Python upsert_zuobiao 的 14 列 A-N。
+ *
+ * <pre>
+ * A=日期 | B=运营 | C=账户名称 | D=客户ID | E=账号消耗 | F=留空(报给客户)
+ * G=产品名/养户 | H=商务/止戈 | I=投放国家 | J=广告系列 | K=留空(平台实际)
+ * L=代投比例 | M=F*L(公式) | N=F-K+M(公式)
+ * </pre>
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ZuobiaoRow {
-    private String date;           // A: 日期
-    private String operator;       // B: 运营
-    private String customerName;   // C: 客户名称
-    private String salesPerson;    // D: 商务
-    private String country;        // E: 投放国家
-    private String channelNo;      // F: 渠道号
-    private String seriesName;     // G: 系列名
-    private String packageName;    // H: 包名
-    private String accountId;      // I: 账户ID
-    private String imageUrl;       // J: 素材图
-    private String landingPage;    // K: 落地页
-    private Double accountCost;    // L: 账号消耗(¥)
 
-    public java.util.List<Object> toSheetRow() {
-        return java.util.List.of(
-            date != null ? date : "",
-            operator != null ? operator : "",
-            customerName != null ? customerName : "",
-            salesPerson != null ? salesPerson : "",
-            country != null ? country : "",
-            channelNo != null ? channelNo : "",
-            seriesName != null ? seriesName : "",
-            packageName != null ? packageName : "",
-            accountId != null ? accountId : "",
-            imageUrl != null ? imageUrl : "",
-            landingPage != null ? landingPage : "",
-            accountCost != null ? accountCost : 0
-        );
+    // ── 请求字段（对应 Python row dict）──
+    private String account;       // C: 账户名称
+    private String customerId;    // D: 客户ID（纯数字串）
+    private double cost;          // E: 账号消耗
+    private String campaign;      // J: 广告系列
+    private boolean isYanghu;     // 是否为养户行
+    private int impressions;      // 展示次数（DB同步用）
+    private int clicks;           // 点击次数（DB同步用）
+    private double installs;      // 安装数（DB同步用）
+    private double inAppActions;  // 应用内操作（DB同步用）
+    private double costPerInApp;  // 单次应用内操作成本（DB同步用）
+
+    /**
+     * 生成 14 列 Sheet 行数据。
+     *
+     * @param reportDate    A列 日期
+     * @param operatorName  B列 运营
+     * @param productName   G列 产品名（非养户行使用）
+     * @param salesPerson   H列 商务（非养户行使用）
+     * @param region        I列 投放国家
+     * @param agencyRatio   L列 代投比例数值
+     * @return 14 元素的 List（M/N 为 null，由调用方按行号填入公式）
+     */
+    public List<Object> toSheetRow(String reportDate, String operatorName,
+            String productName, String salesPerson, String region, Integer agencyRatio) {
+        String percentStr = agencyRatio != null ? agencyRatio + "%" : "";
+
+        String gVal = isYanghu ? "养户" : (productName != null ? productName : "");
+        String hVal = isYanghu ? "止戈" : (salesPerson != null ? salesPerson : "");
+        String lVal = isYanghu ? "0%" : percentStr;
+
+        List<Object> row = new ArrayList<>(14);
+        row.add(reportDate != null ? reportDate : "");                    // A: 日期
+        row.add(operatorName != null ? operatorName : "");                // B: 运营
+        row.add(account != null ? account : "");                          // C: 账户名称
+        row.add(customerId != null ? customerId : "");                    // D: 客户ID
+        row.add(cost);                                                    // E: 账号消耗
+        row.add("");                                                      // F: 留空(报给客户)
+        row.add(gVal);                                                    // G: 产品名/养户
+        row.add(hVal);                                                    // H: 商务/止戈
+        row.add(region != null ? region : "");                            // I: 投放国家
+        row.add(campaign != null ? campaign : "");                        // J: 广告系列
+        row.add("");                                                      // K: 留空(平台实际)
+        row.add(lVal);                                                    // L: 代投比例
+        row.add(null);                                                    // M: =F*L (公式)
+        row.add(null);                                                    // N: =F-K+M (公式)
+        return row;
     }
 }

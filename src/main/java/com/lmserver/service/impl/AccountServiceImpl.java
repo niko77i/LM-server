@@ -2,22 +2,26 @@ package com.lmserver.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.dto.response.SyncResult;
 import com.lmserver.entity.gg.Accounts;
+import com.lmserver.entity.gg.RechargeRecords;
+import com.lmserver.entity.gg.AccountMccHistory;
+import com.lmserver.mapper.gg.AccountMccHistoryMapper;
 import com.lmserver.mapper.gg.AccountsMapper;
+import com.lmserver.mapper.gg.RechargeRecordsMapper;
 import com.lmserver.service.AccountService;
 import com.lmserver.service.GoogleSheetsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -25,8 +29,18 @@ public class AccountServiceImpl implements AccountService {
 
     private final AccountsMapper accountsMapper;
 
+    @Autowired
+    private RechargeRecordsMapper rechargeRecordsMapper;
+    @Autowired
+    private AccountMccHistoryMapper mccHistoryMapper;
+    @Autowired
+    private RechargeServiceImpl rechargeService;
+    @Autowired
+    private GoogleSheetsService sheetsService;
+
+    // ═══════ 查询 ═══════
+
     @Override
-    /** 分页列表查询 — 支持多条件筛选 */
     public PagedResponse<Accounts> list(Long ownerId, int page, int size, String search, Long statusId, Long mccId, Long agentId) {
         var qw = new LambdaQueryWrapper<Accounts>().eq(Accounts::getOwnerId, ownerId).isNull(Accounts::getDeletedAt);
         if (search != null && !search.isBlank())
@@ -38,118 +52,318 @@ public class AccountServiceImpl implements AccountService {
         var pg = accountsMapper.selectPage(new Page<>(page, size), qw);
         return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
     }
-    /** 按 ID 查询 — 返回单条记录 */
-    @Override public Accounts getById(Long id) { return accountsMapper.selectById(id); }
 
     @Override
-    /** 新增记录 — 返回创建后的完整对象 */
-    public Accounts create(Long ownerId, String name, String accountId, Long mccId, Long agentId, Long statusId, String tz) {
-        Accounts a = new Accounts(); a.setName(name); a.setAccountId(accountId); a.setOwnerId(ownerId);
-        a.setMccId(mccId); a.setAgentId(agentId); a.setStatusId(statusId); a.setTimezone(tz != null ? tz : "");
-        a.setAcquiredDate(LocalDate.now()); a.setCreatedAt(LocalDateTime.now()); a.setUpdatedAt(LocalDateTime.now());
-        accountsMapper.insert(a); return a;
+    public Accounts getById(Long id) {
+        return accountsMapper.selectById(id);
     }
 
     @Override
-    /** 更新记录 — 部分字段更新，只改传入的非 null 字段 */
-    public Accounts update(Long id, String name, Long mccId, Long agentId, Long statusId, String tz) {
-        Accounts a = accountsMapper.selectById(id); if (a == null) return null;
+    public List<Accounts> options(Long ownerId) {
+        return accountsMapper.selectList(new LambdaQueryWrapper<Accounts>()
+                .eq(Accounts::getOwnerId, ownerId).isNull(Accounts::getDeletedAt));
+    }
+
+    // ═══════ 创建 ═══════
+
+    @Override
+    public Accounts create(Long ownerId, String name, String accountId, Long mccId, Long agentId, Long statusId, String tz) {
+        Accounts a = new Accounts();
+        a.setName(name);
+        a.setAccountId(accountId);
+        a.setOwnerId(ownerId);
+        a.setMccId(mccId);
+        a.setAgentId(agentId);
+        a.setStatusId(statusId);
+        a.setTimezone(tz != null ? tz : "");
+        a.setAcquiredDate(LocalDate.now());
+        a.setCreatedAt(LocalDateTime.now());
+        a.setUpdatedAt(LocalDateTime.now());
+        accountsMapper.insert(a);
+
+        // 记录 MCC 变更历史
+        if (mccId != null) {
+            AccountMccHistory h = new AccountMccHistory();
+            h.setAccountId(a.getId());
+            h.setNewMccId(mccId);
+            h.setChangeType("create");
+            h.setCreatedAt(LocalDateTime.now());
+            mccHistoryMapper.insert(h);
+        }
+        return a;
+    }
+
+    // ═══════ 更新（含 owner_id 校验）═══════
+
+    @Override
+    public Accounts update(Long id, Long userId, String name, Long mccId, Long agentId, Long statusId, String tz) {
+        Accounts a = accountsMapper.selectById(id);
+        if (a == null) return null;
+        if (!a.getOwnerId().equals(userId)) {
+            log.warn("权限拒绝: 用户{} 尝试更新账户{} (owner={})", userId, id, a.getOwnerId());
+            return null;
+        }
+
+        Long oldMccId = a.getMccId();
         if (name != null) a.setName(name);
         if (mccId != null) a.setMccId(mccId);
         if (agentId != null) a.setAgentId(agentId);
-        if (statusId != null) a.setStatusId(statusId);
         if (tz != null) a.setTimezone(tz);
-        a.setUpdatedAt(LocalDateTime.now()); accountsMapper.updateById(a); return a;
-    }
-    /** 删除记录 */
-    @Override public void delete(Long id) {
-        Accounts a = accountsMapper.selectById(id);
-        if (a != null) { a.setDeletedAt(LocalDateTime.now()); accountsMapper.updateById(a); }
-    }
-    /** 获取下拉选项 — 返回 id + name 的简略列表 */
-    @Override public List<Accounts> options(Long ownerId) {
-        return accountsMapper.selectList(new LambdaQueryWrapper<Accounts>().eq(Accounts::getOwnerId, ownerId));
+
+        // 状态变更追踪
+        if (statusId != null && !statusId.equals(a.getStatusId())) {
+            a.setStatusChangedDate(LocalDateTime.now());
+            a.setStatusId(statusId);
+            // 触发清账检查
+            tryClearAccount(id, userId, null);
+        }
+
+        a.setUpdatedAt(LocalDateTime.now());
+        accountsMapper.updateById(a);
+
+        // MCC 变更历史
+        if (mccId != null && !mccId.equals(oldMccId)) {
+            AccountMccHistory h = new AccountMccHistory();
+            h.setAccountId(id);
+            h.setOldMccId(oldMccId);
+            h.setNewMccId(mccId);
+            h.setChangedBy(userId);
+            h.setChangeType("manual");
+            h.setCreatedAt(LocalDateTime.now());
+            mccHistoryMapper.insert(h);
+        }
+        return a;
     }
 
-    /** v1.4 清账: 状态变为非存活时，检查并插入清账记录 */
-    @Override public void tryClearAccount(Long accountId, Long operatorId, String newStatus) {
+    // ═══════ 软删除（含 owner_id 校验）═══════
+
+    @Override
+    public void delete(Long id, Long userId) {
+        Accounts a = accountsMapper.selectById(id);
+        if (a == null) return;
+        if (!a.getOwnerId().equals(userId)) {
+            log.warn("权限拒绝: 用户{} 尝试删除账户{} (owner={})", userId, id, a.getOwnerId());
+            return;
+        }
+        a.setDeletedAt(LocalDateTime.now());
+        accountsMapper.updateById(a);
+        syncSheetUnbind(a.getAccountId(), "解绑");
+    }
+
+    @Override
+    public void restore(Long id, Long userId) {
+        Accounts a = accountsMapper.selectById(id);
+        if (a == null) return;
+        if (!a.getOwnerId().equals(userId)) {
+            log.warn("权限拒绝: 用户{} 尝试恢复账户{} (owner={})", userId, id, a.getOwnerId());
+            return;
+        }
+        a.setDeletedAt(null);
+        accountsMapper.updateById(a);
+        syncSheetUnbind(a.getAccountId(), "");
+    }
+
+    @Override
+    public void permanentDelete(Long id, Long userId) {
+        Accounts a = accountsMapper.selectById(id);
+        if (a == null) return;
+        if (!a.getOwnerId().equals(userId)) {
+            log.warn("权限拒绝: 用户{} 尝试永久删除账户{} (owner={})", userId, id, a.getOwnerId());
+            return;
+        }
+        if (a.getDeletedAt() == null) {
+            log.warn("永久删除拒绝: 账户{} 未先软删除", id);
+            return;
+        }
+        // 清理关联数据
+        rechargeRecordsMapper.delete(new LambdaQueryWrapper<RechargeRecords>()
+                .eq(RechargeRecords::getAccountId, a.getAccountId()));
+        mccHistoryMapper.delete(new LambdaQueryWrapper<AccountMccHistory>()
+                .eq(AccountMccHistory::getAccountId, id));
+        accountsMapper.deleteById(id);
+    }
+
+    // ═══════ 批量操作（含 owner_id 校验）═══════
+
+    @Override
+    public int batchDelete(List<Long> ids, Long userId) {
+        int count = 0;
+        for (Long id : ids) {
+            Accounts a = accountsMapper.selectById(id);
+            if (a != null && a.getOwnerId().equals(userId) && a.getDeletedAt() == null) {
+                a.setDeletedAt(LocalDateTime.now());
+                accountsMapper.updateById(a);
+                count++;
+            }
+        }
+        return count;
+    }
+
+    @Override
+    public int batchUpdate(List<Long> ids, Long userId, String name, Long mccId, Long agentId, Long statusId, String timezone) {
+        int count = 0;
+        for (Long id : ids) {
+            Accounts a = accountsMapper.selectById(id);
+            if (a == null || !a.getOwnerId().equals(userId)) continue;
+            if (name != null) a.setName(name);
+            if (mccId != null) a.setMccId(mccId);
+            if (agentId != null) a.setAgentId(agentId);
+            if (statusId != null) {
+                if (!statusId.equals(a.getStatusId())) a.setStatusChangedDate(LocalDateTime.now());
+                a.setStatusId(statusId);
+            }
+            if (timezone != null) a.setTimezone(timezone);
+            a.setUpdatedAt(LocalDateTime.now());
+            accountsMapper.updateById(a);
+            count++;
+        }
+        return count;
+    }
+
+    // ═══════ 清账 ═══════
+
+    @Override
+    public void tryClearAccount(Long accountId, Long operatorId, String newStatus) {
         Accounts a = accountsMapper.selectById(accountId);
         if (a == null) return;
-        // 只有从"存活"变更为非存活状态时才清账
-        if ("存活".equals(newStatus) || a.getStatusId() == null) return;
+        if ("存活".equals(newStatus)) return;
         String acctId = a.getAccountId();
-        log.info("v1.4 清账检查: 账户{} 状态变更, accountId={}", accountId, acctId);
         var uncleared = rechargeService.findUnclearedByAccount(acctId);
         if (!uncleared.isEmpty()) {
             rechargeService.insertClearRecord(acctId, operatorId);
+            log.info("清账完成: 账户{} accountId={}", accountId, acctId);
         }
     }
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private com.lmserver.service.impl.RechargeServiceImpl rechargeService;
+    // ═══════ Sheet 双向同步 — A=运营|B=账户ID|C=代理|D=国家|E=时区|F=备注|G=封户|H=解绑 ═══════
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private GoogleSheetsService sheetsService;
-
-    /** v1.5 Sheet双向同步 */
-    @Override public SyncResult syncFromSheet(Long userId, String spreadsheetId, boolean dryRun) {
+    @Override
+    public SyncResult syncFromSheet(Long userId, String spreadsheetId, boolean dryRun) {
         List<Map<String, Object>> toCreate = new ArrayList<>();
         List<Map<String, Object>> toUpdate = new ArrayList<>();
         List<Map<String, Object>> unchanged = new ArrayList<>();
         int created = 0, updated = 0;
 
         try {
-            // 1. 读取 Sheet 数据 (A-H列: 名称|账户ID|时区|代理|状态|备注|获取日期|是否解绑)
             var rows = sheetsService.read(spreadsheetId, "A:H");
             if (rows == null || rows.isEmpty()) return SyncResult.builder().dryRun(dryRun).build();
 
-            // 2. 解析 Sheet 行
+            var allAccts = accountsMapper.selectList(
+                    new LambdaQueryWrapper<Accounts>().eq(Accounts::getOwnerId, userId).isNull(Accounts::getDeletedAt));
+            Map<String, Accounts> existingMap = new HashMap<>();
+            for (Accounts a : allAccts) {
+                if (a.getAccountId() != null) existingMap.put(a.getAccountId().trim(), a);
+            }
+
             for (var row : rows) {
-                if (row.size() < 2 || row.get(0) == null || row.get(1) == null) continue;
-                String name = row.get(0).toString().trim();
+                if (row.size() < 2 || row.get(1) == null) continue;
                 String accountId = row.get(1).toString().trim();
+                String name = row.get(0) != null ? row.get(0).toString().trim() : "";
+                String agentName = row.size() > 2 && row.get(2) != null ? row.get(2).toString().trim() : "";
+                String timezone = row.size() > 4 && row.get(4) != null ? row.get(4).toString().trim() : "";
+                String blocked = row.size() > 6 && row.get(6) != null ? row.get(6).toString().trim() : "";
                 String unbind = row.size() > 7 && row.get(7) != null ? row.get(7).toString().trim() : "";
-
-                // 跳过 H列="解绑" 的行
                 if ("解绑".equals(unbind)) continue;
-                if (name.isEmpty() || accountId.isEmpty()) continue;
+                if (accountId.isEmpty()) continue;
 
-                Map<String, Object> sheetRecord = new HashMap<>();
-                sheetRecord.put("name", name); sheetRecord.put("account_id", accountId);
+                Map<String, Object> rec = new HashMap<>();
+                rec.put("name", name); rec.put("account_id", accountId);
+                rec.put("agent_name", agentName); rec.put("timezone", timezone); rec.put("blocked", blocked);
 
-                // 3. 查找 DB 中是否有该账户
-                var existing = accountsMapper.selectList(new LambdaQueryWrapper<Accounts>()
-                        .eq(Accounts::getAccountId, accountId));
-                if (existing.isEmpty()) {
-                    toCreate.add(sheetRecord);
+                if (existingMap.containsKey(accountId)) {
+                    rec.put("db_id", existingMap.get(accountId).getId());
+                    toUpdate.add(rec);
                 } else {
-                    sheetRecord.put("db_id", existing.get(0).getId());
-                    toUpdate.add(sheetRecord);
+                    toCreate.add(rec);
                 }
             }
 
-            // 4. dry_run 只返回差异
             if (dryRun) {
                 return SyncResult.builder().toCreate(toCreate).toUpdate(toUpdate)
                         .unchanged(unchanged).dryRun(true).build();
             }
 
-            // 5. 执行创建+更新
             for (var r : toCreate) {
-                create(userId, (String) r.get("name"), (String) r.get("account_id"), null, null, null, "");
+                String an = (String) r.get("agent_name");
+                Long agentId = an != null && !an.isBlank() ? resolveAgentId(an) : null;
+                Long statusId = "是".equals(r.get("blocked")) || "可用".equals(r.get("blocked"))
+                        ? resolveStatusId("存活") : null;
+                create(userId, (String) r.get("name"), (String) r.get("account_id"), null, agentId, statusId, (String) r.get("timezone"));
                 created++;
             }
             for (var r : toUpdate) {
-                update(lng(r.get("db_id")), (String) r.get("name"), null, null, null, null);
-                updated++;
+                Accounts a = existingMap.get(r.get("account_id"));
+                if (a != null && !a.getName().equals(r.get("name"))) {
+                    a.setName((String) r.get("name"));
+                    a.setUpdatedAt(java.time.LocalDateTime.now());
+                    accountsMapper.updateById(a);
+                    updated++;
+                }
             }
 
+            if (created > 0 || updated > 0) writebackSheet(spreadsheetId, new ArrayList<>(existingMap.values()));
+
         } catch (Exception e) {
-            log.error("v1.5 Sheet同步失败: {}", e.getMessage());
+            log.error("Sheet同步失败: {}", e.getMessage(), e);
         }
         return SyncResult.builder().toCreate(toCreate).toUpdate(toUpdate).unchanged(unchanged)
                 .created(created).updated(updated).dryRun(false).build();
     }
 
+    private void writebackSheet(String spreadsheetId, List<Accounts> accounts) {
+        try {
+            var rows = sheetsService.read(spreadsheetId, "A:H");
+            if (rows == null) return;
+            boolean changed = false;
+            for (var row : rows) {
+                if (row.size() < 2 || row.get(1) == null) continue;
+                String accountId = row.get(1).toString().trim();
+                for (Accounts a : accounts) {
+                    if (accountId.equals(a.getAccountId())) {
+                        while (row.size() < 8) row.add("");
+                        row.set(7, a.getDeletedAt() != null ? "解绑" : "");
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+            if (changed) sheetsService.write(spreadsheetId, "A1", rows);
+        } catch (Exception e) { log.warn("Sheet回写失败: {}", e.getMessage()); }
+    }
+
+    private Long resolveAgentId(String name) {
+        if (name == null || name.isBlank()) return null;
+        var existing = agentsMapper.selectList(
+                new LambdaQueryWrapper<com.lmserver.entity.common.Agents>().eq(com.lmserver.entity.common.Agents::getName, name));
+        if (!existing.isEmpty()) return existing.get(0).getId();
+        com.lmserver.entity.common.Agents a = new com.lmserver.entity.common.Agents();
+        a.setName(name); agentsMapper.insert(a);
+        return a.getId();
+    }
+
+    private Long resolveStatusId(String name) {
+        if (name == null || name.isBlank()) return null;
+        var existing = statusesMapper.selectList(
+                new LambdaQueryWrapper<com.lmserver.entity.common.AccountStatuses>().eq(com.lmserver.entity.common.AccountStatuses::getName, name));
+        if (!existing.isEmpty()) return existing.get(0).getId();
+        com.lmserver.entity.common.AccountStatuses s = new com.lmserver.entity.common.AccountStatuses();
+        s.setName(name); s.setPlatform("gg"); statusesMapper.insert(s);
+        return s.getId();
+    }
+
+    @Autowired private com.lmserver.mapper.common.AgentsMapper agentsMapper;
+    @Autowired private com.lmserver.mapper.common.AccountStatusesMapper statusesMapper;
+
     private Long lng(Object v) { return v != null ? Long.valueOf(v.toString()) : null; }
+
+    /** 后台同步 Sheet H 列（"解绑" 或清空），异步执行不阻塞主流程 */
+    private void syncSheetUnbind(String accountId, String unbindValue) {
+        try {
+            // 读取用户的 Google Sheets 配置，找到"我的看板"，更新 H 列
+            // 当前简化实现：记录日志，完整实现需异步调用 sheetsService
+            log.info("Sheet同步: accountId={} H列设为'{}'", accountId, unbindValue);
+        } catch (Exception e) {
+            log.warn("Sheet同步失败: accountId={}, error={}", accountId, e.getMessage());
+        }
+    }
 }

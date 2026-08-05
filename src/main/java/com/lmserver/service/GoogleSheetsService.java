@@ -8,22 +8,17 @@ import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.lmserver.dto.sheets.FbReportRow;
 import com.lmserver.dto.sheets.ZuobiaoRow;
-import com.lmserver.entity.gg.Packages;
-import com.lmserver.entity.gg.Products;
-import com.lmserver.mapper.gg.PackagesMapper;
-import com.lmserver.mapper.gg.ProductsMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
- * Google Sheets 服务 — GG 做表 14 列 upsert + FB 做表 12 列 upsert。
- * 完整对齐设计文档 8.1 节：读取现有数据→找最后行→去重索引→自动扩容→批量更新。
+ * Google Sheets 服务 — 对齐 Python google_sheets_service.py。
+ * GG 做表 14 列 upsert（A-N，含公式列 + 格式化）
+ * + FB 做表 12 列 upsert（A-L）。
  */
 @Slf4j
 @Service
@@ -32,11 +27,6 @@ public class GoogleSheetsService {
     @Value("${google.sheets.credentials-path}")
     private String credentialsPath;
 
-    @Autowired
-    private ProductsMapper productsMapper;
-    @Autowired
-    private PackagesMapper packagesMapper;
-
     private Sheets sheets;
     private boolean initialized;
 
@@ -44,7 +34,8 @@ public class GoogleSheetsService {
         if (initialized) return;
         if (!new java.io.File(credentialsPath).exists()) {
             log.warn("Google Sheets 凭证不存在: {}", credentialsPath);
-            initialized = true; return;
+            initialized = true;
+            return;
         }
         try {
             GoogleCredentials creds = GoogleCredentials
@@ -62,145 +53,241 @@ public class GoogleSheetsService {
         initialized = true;
     }
 
-    // ═══════════ GG 做表 upsert（14 列 A-L 数据 + M 利润 + N 客户实际消耗）═══════════
+    // ═══════════ GG 做表 upsert（对齐 Python upsert_zuobiao）═══════════
 
     /**
      * GG 做表数据 upsert — 对齐 Python upsert_zuobiao。
-     * A 日期|B 运营|C 客户名称|D 商务|E 投放国家|F 渠道号|G 系列名|H 包名|I 账户ID|J 素材图|K 落地页|L 账号消耗
+     *
+     * <pre>
+     * A=日期 | B=运营 | C=账户名称 | D=客户ID | E=账号消耗 | F=留空
+     * G=产品名/养户 | H=商务/止戈 | I=投放国家 | J=广告系列 | K=留空
+     * L=代投比例 | M=F*L(公式) | N=F-K+M(公式)
+     * </pre>
+     *
+     * @return {"updated": N, "inserted": N} 或 {"error": "..."}
      */
     public Map<String, Object> upsertZuobiao(String spreadsheetId, List<ZuobiaoRow> rows,
-            String productName, String reportDate) {
+            String productName, String region, String reportDate,
+            String salesPerson, Integer agencyRatio, String operatorName) {
         init();
         if (sheets == null) return Map.of("error", "Sheets 未初始化");
+        if (rows == null || rows.isEmpty()) return Map.of("updated", 0, "inserted", 0);
 
-        // ── 包名校验：产品包系列名 vs 数据广告系列名取交集 ──
-        boolean seriesMismatchWarning = false;
-        if (productName != null && !productName.isBlank()) {
-            var productQw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Products>()
-                    .eq(Products::getProductName, productName);
-            Products product = productsMapper.selectOne(productQw);
-            if (product != null) {
-                // 产品下所有正常状态的包系列名
-                var pkgQw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Packages>()
-                        .eq(Packages::getProductId, product.getId())
-                        .eq(Packages::getStatus, "正常");
-                Set<String> pkgSeriesNames = packagesMapper.selectList(pkgQw).stream()
-                        .map(Packages::getSeriesName)
-                        .filter(s -> s != null && !s.isBlank())
-                        .collect(Collectors.toSet());
-
-                // 数据中的广告系列名（G 列）
-                Set<String> campaigns = rows.stream()
-                        .map(ZuobiaoRow::getSeriesName)
-                        .filter(s -> s != null && !s.isBlank())
-                        .collect(Collectors.toSet());
-
-                // 养户行：没有系列名也没有包名的行
-                boolean hasMaintenanceRow = rows.stream()
-                        .anyMatch(r -> (r.getSeriesName() == null || r.getSeriesName().isBlank())
-                                && (r.getPackageName() == null || r.getPackageName().isBlank()));
-
-                // 取交集
-                campaigns.retainAll(pkgSeriesNames);
-
-                if (campaigns.isEmpty()) {
-                    if (!hasMaintenanceRow) {
-                        return Map.of("error", "产品选择有误！「" + productName
-                                + "」的包系列与数据中的广告系列不匹配，请重新选择产品。");
-                    }
-                    // 无交集但有养户行 → 只写入养户行，跳过其他行
-                    seriesMismatchWarning = true;
-                    rows = rows.stream()
-                            .filter(r -> (r.getSeriesName() == null || r.getSeriesName().isBlank())
-                                    && (r.getPackageName() == null || r.getPackageName().isBlank()))
-                            .collect(Collectors.toList());
-                    log.warn("[GG-Sheets] 包系列与广告系列无交集，仅写入 {} 行养户数据", rows.size());
-                }
-            }
-        }
-
-        int updated = 0, appended = 0;
         try {
+            // 1. 获取表格信息（取第一个 Sheet）
             Spreadsheet sp = sheets.spreadsheets().get(spreadsheetId).execute();
-            String sheetName = sp.getSheets().get(0).getProperties().getTitle();
+            List<Sheet> sheetList = sp.getSheets();
+            if (sheetList == null || sheetList.isEmpty()) {
+                // 极端情况：创建默认 Sheet1
+                sheets.spreadsheets().batchUpdate(spreadsheetId,
+                        new BatchUpdateSpreadsheetRequest().setRequests(List.of(
+                                new Request().setAddSheet(new AddSheetRequest()
+                                        .setProperties(new SheetProperties().setTitle("Sheet1"))))))
+                        .execute();
+                sp = sheets.spreadsheets().get(spreadsheetId).execute();
+            }
+            SheetProperties props = sp.getSheets().get(0).getProperties();
+            String sheetName = props.getTitle();
+            int sheetIdInt = props.getSheetId();
+            int sheetRows = props.getGridProperties().getRowCount();
 
-            // 1. 读取现有数据 A-N
+            // 2. 读取现有数据 A-N
             ValueRange vr = sheets.spreadsheets().values()
                     .get(spreadsheetId, "'" + sheetName + "'!A:N").execute();
             List<List<Object>> existing = vr.getValues();
             if (existing == null) existing = new ArrayList<>();
 
-            // 2. 找最后一行（A 列有日期）
+            // 找最后一行（A列有日期）
             int lastRow = 0;
             String lastDate = "";
             for (int i = existing.size() - 1; i >= 0; i--) {
                 List<Object> r = existing.get(i);
                 if (!r.isEmpty() && r.get(0) != null && !r.get(0).toString().isBlank()) {
-                    lastRow = i + 1; lastDate = r.get(0).toString().trim(); break;
+                    lastRow = i + 1;
+                    lastDate = r.get(0).toString().trim();
+                    break;
                 }
             }
-            // 3. 新日期空一行
-            if (reportDate != null && !reportDate.isEmpty() && !lastDate.isEmpty() && !lastDate.equals(reportDate)) {
-                lastRow++;
-            }
-            // 4. 去重索引: (日期 + 账户ID)
-            Map<String, Integer> dedup = new HashMap<>();
+
+            // 3. 构建去重索引: (A=日期, D=客户ID, J=广告系列)
+            Map<String, Integer> existingIndex = new HashMap<>();
             for (int i = 0; i < existing.size(); i++) {
                 List<Object> r = existing.get(i);
-                if (r.size() > 8 && r.get(0) != null && r.get(8) != null) {
-                    dedup.put(r.get(0).toString().trim() + "|" + r.get(8).toString().trim(), i);
+                String d = r.size() > 0 && r.get(0) != null ? r.get(0).toString().trim() : "";
+                String cid = r.size() > 3 && r.get(3) != null ? r.get(3).toString().trim() : "";
+                String cam = r.size() > 9 && r.get(9) != null ? r.get(9).toString().trim() : "";
+                if (!d.isEmpty() || !cid.isEmpty() || !cam.isEmpty()) {
+                    existingIndex.put(d + "|" + cid + "|" + cam, i);
                 }
             }
-            // 5. 自动扩容
-            int maxRows = sp.getSheets().get(0).getProperties().getGridProperties().getRowCount();
-            int needed = lastRow + rows.size() + 1;
-            if (needed > maxRows) {
+
+            // 4. 构建 14 列新行（养户行覆盖 G/H/L）
+            String percentStr = agencyRatio != null ? agencyRatio + "%" : "";
+            List<List<Object>> newRows = new ArrayList<>();
+            for (ZuobiaoRow row : rows) {
+                newRows.add(row.toSheetRow(reportDate, operatorName,
+                        productName, salesPerson, region, agencyRatio));
+            }
+
+            // 5. 分拣：updates（已有索引）vs appends（新数据）
+            List<int[]> updateEntries = new ArrayList<>();  // [rowIndex, newRowIndex]
+            List<Integer> appendIndices = new ArrayList<>();
+
+            for (int i = 0; i < newRows.size(); i++) {
+                List<Object> nr = newRows.get(i);
+                String key = nr.get(0).toString().trim() + "|"
+                        + nr.get(3).toString().trim() + "|"
+                        + nr.get(9).toString().trim();
+                if (existingIndex.containsKey(key)) {
+                    updateEntries.add(new int[]{existingIndex.get(key), i});
+                } else {
+                    appendIndices.add(i);
+                }
+            }
+
+            log.info("[GG-Sheets] 更新 {} 行，新增 {} 行", updateEntries.size(), appendIndices.size());
+
+            // 6. 确保行数足够
+            int maxRowNeeded = 0;
+            for (int[] ue : updateEntries) {
+                maxRowNeeded = Math.max(maxRowNeeded, ue[0] + 1);
+            }
+            if (!appendIndices.isEmpty()) {
+                int appendStart = lastRow + 1;
+                if (!lastDate.isEmpty() && !lastDate.equals(reportDate != null ? reportDate.trim() : "")) {
+                    appendStart++;
+                }
+                maxRowNeeded = Math.max(maxRowNeeded, appendStart + appendIndices.size() - 1);
+            }
+            if (maxRowNeeded > sheetRows) {
                 sheets.spreadsheets().batchUpdate(spreadsheetId,
                         new BatchUpdateSpreadsheetRequest().setRequests(List.of(
                                 new Request().setAppendDimension(new AppendDimensionRequest()
-                                        .setSheetId(sp.getSheets().get(0).getProperties().getSheetId())
-                                        .setDimension("ROWS").setLength(needed - maxRows + 100)))))
+                                        .setSheetId(sheetIdInt)
+                                        .setDimension("ROWS")
+                                        .setLength(maxRowNeeded - sheetRows + 10)))))
+                        .execute();
+                log.info("[GG-Sheets] 扩展行数 {} → {}", sheetRows, maxRowNeeded + 10);
+            }
+
+            // 7. 批量更新已有行
+            if (!updateEntries.isEmpty()) {
+                List<ValueRange> data = new ArrayList<>();
+                for (int[] ue : updateEntries) {
+                    int rowNum = ue[0] + 1; // 1-indexed
+                    List<Object> rowData = newRows.get(ue[1]);
+                    // 填入公式 M=F*L, N=F-K+M
+                    rowData.set(12, "=F" + rowNum + "*L" + rowNum);
+                    rowData.set(13, "=F" + rowNum + "-K" + rowNum + "+M" + rowNum);
+                    data.add(new ValueRange()
+                            .setRange("'" + sheetName + "'!A" + rowNum + ":N" + rowNum)
+                            .setValues(List.of(rowData)));
+                }
+                sheets.spreadsheets().values().batchUpdate(spreadsheetId,
+                        new BatchUpdateValuesRequest()
+                                .setValueInputOption("USER_ENTERED")
+                                .setData(data))
                         .execute();
             }
-            // 6. 批量更新
-            List<ValueRange> updates = new ArrayList<>();
-            for (ZuobiaoRow zr : rows) {
-                List<Object> row = zr.toSheetRow();
-                String key = reportDate + "|" + zr.getAccountId();
-                int target;
-                if (dedup.containsKey(key)) { target = dedup.get(key); updated++; }
-                else { target = lastRow; lastRow++; appended++; }
-                updates.add(new ValueRange()
-                        .setRange("'" + sheetName + "'!A" + (target + 1) + ":L" + (target + 1))
-                        .setValues(List.of(row)));
+
+            // 8. 追加新行
+            int appendStart = 0;
+            int appendEnd = 0;
+            if (!appendIndices.isEmpty()) {
+                appendStart = lastRow + 1;
+                if (!lastDate.isEmpty() && !lastDate.equals(reportDate != null ? reportDate.trim() : "")) {
+                    appendStart++;
+                }
+                appendEnd = appendStart + appendIndices.size() - 1;
+
+                List<List<Object>> appendValues = new ArrayList<>();
+                for (int i = 0; i < appendIndices.size(); i++) {
+                    int rowNum = appendStart + i;
+                    List<Object> rowData = newRows.get(appendIndices.get(i));
+                    // 填入公式
+                    rowData.set(12, "=F" + rowNum + "*L" + rowNum);
+                    rowData.set(13, "=F" + rowNum + "-K" + rowNum + "+M" + rowNum);
+                    appendValues.add(rowData);
+                }
+                sheets.spreadsheets().values().update(spreadsheetId,
+                        "'" + sheetName + "'!A" + appendStart + ":N" + appendEnd,
+                        new ValueRange().setValues(appendValues))
+                        .setValueInputOption("USER_ENTERED")
+                        .execute();
             }
-            if (!updates.isEmpty()) {
-                sheets.spreadsheets().values().batchUpdate(spreadsheetId,
-                        new BatchUpdateValuesRequest().setValueInputOption("USER_ENTERED").setData(updates)).execute();
+
+            // 9. 格式化 — D列文本，E列数字千分位（仅新追加行）
+            if (!appendIndices.isEmpty()) {
+                sheets.spreadsheets().batchUpdate(spreadsheetId,
+                        new BatchUpdateSpreadsheetRequest().setRequests(List.of(
+                                new Request().setRepeatCell(new RepeatCellRequest()
+                                        .setRange(new GridRange()
+                                                .setSheetId(sheetIdInt)
+                                                .setStartColumnIndex(3)
+                                                .setEndColumnIndex(4)
+                                                .setStartRowIndex(appendStart - 1)
+                                                .setEndRowIndex(appendEnd))
+                                        .setCell(new CellData().setUserEnteredFormat(
+                                                new CellFormat().setNumberFormat(
+                                                        new NumberFormat().setType("TEXT"))))
+                                        .setFields("userEnteredFormat.numberFormat")),
+                                new Request().setRepeatCell(new RepeatCellRequest()
+                                        .setRange(new GridRange()
+                                                .setSheetId(sheetIdInt)
+                                                .setStartColumnIndex(4)
+                                                .setEndColumnIndex(5)
+                                                .setStartRowIndex(appendStart - 1)
+                                                .setEndRowIndex(appendEnd))
+                                        .setCell(new CellData().setUserEnteredFormat(
+                                                new CellFormat().setNumberFormat(
+                                                        new NumberFormat().setType("NUMBER")
+                                                                .setPattern("#,##0.00"))))
+                                        .setFields("userEnteredFormat.numberFormat")))))
+                        .execute();
             }
-            log.info("[GG-Sheets] upsert: {}更新 {}追加, 表格:{}", updated, appended, spreadsheetId);
+
+            return Map.of("updated", updateEntries.size(), "inserted", appendIndices.size());
+
         } catch (Exception e) {
-            log.error("[GG-Sheets] 失败: {}", e.getMessage());
+            log.error("[GG-Sheets] 失败: {}", e.getMessage(), e);
             return Map.of("error", e.getMessage());
         }
-        if (seriesMismatchWarning) {
-            return Map.of("updated", updated, "appended", appended,
-                    "warning", "产品「" + productName + "」的包系列与数据中的广告系列无交集，请确认产品选择是否正确。");
-        }
-        return Map.of("updated", updated, "appended", appended);
     }
 
-    // ═══════════ FB 做表 upsert（12 列 A-L）═══════════
+    // ═══════════ FB 做表 upsert（对齐 Python upsert_fb_reports）═══════════
 
     /**
-     * FB 做表数据写入 — 对齐 Python upsert_fb_reports。
-     * A 日期|B 运营|C 账户名称|D 广告账户ID|E 账号消耗|F 报给客户|G 客户名称|H 商务|I 投放国家|J 渠道号|K 平台实际|L 代投比例
+     * FB 做表数据写入 — A 日期|B 运营|C 账户名称|D 广告账户ID|E 账号消耗|F 报给客户|G 客户名称|H 商务|I 投放国家|J 渠道号|K 平台实际|L 代投比例
      */
     public Map<String, Object> upsertFbReports(String spreadsheetId, List<FbReportRow> rows,
-            Long userId, String productName, String reportDate) {
+            Long userId, String productName, String reportDate, String region,
+            String salesPerson, Integer agencyRatio, String operatorName) {
         init();
         if (sheets == null) return Map.of("error", "Sheets 未初始化");
-        int updated = 0, appended = 0;
+        if (rows == null || rows.isEmpty()) return Map.of("updated", 0, "inserted", 0);
+
+        String percentStr = agencyRatio != null ? agencyRatio + "%" : "";
+
+        List<List<Object>> newRows = new ArrayList<>();
+        for (FbReportRow fr : rows) {
+            List<Object> row = new ArrayList<>(12);
+            row.add(reportDate != null ? reportDate : "");                   // A
+            row.add(operatorName != null ? operatorName : "");               // B
+            row.add(fr.getAccountName() != null ? fr.getAccountName() : ""); // C
+            // D列加单引号防止 Sheets 将纯数字 ID 转为科学计数法
+            String aid = fr.getAccountId();
+            row.add(aid != null && !aid.isEmpty() ? "'" + aid : "");         // D
+            row.add(fr.getCost() != null ? fr.getCost() : 0);                // E
+            row.add("");                                                      // F 报给客户
+            row.add(productName != null ? productName : "");                 // G
+            row.add(salesPerson != null ? salesPerson : "");                 // H
+            row.add(region != null ? region : "");                           // I
+            row.add(fr.getChannelNo() != null ? fr.getChannelNo() : "");     // J
+            row.add("");                                                      // K 平台实际
+            row.add(percentStr);                                              // L 代投比例
+            newRows.add(row);
+        }
+
         try {
             Spreadsheet sp = sheets.spreadsheets().get(spreadsheetId).execute();
             String sheetName = sp.getSheets().get(0).getProperties().getTitle();
@@ -215,56 +302,81 @@ public class GoogleSheetsService {
             for (int i = existing.size() - 1; i >= 0; i--) {
                 List<Object> r = existing.get(i);
                 if (!r.isEmpty() && r.get(0) != null && !r.get(0).toString().isBlank()) {
-                    lastRow = i + 1; lastDate = r.get(0).toString().trim(); break;
+                    lastRow = i + 1;
+                    lastDate = r.get(0).toString().trim();
+                    break;
                 }
             }
-            if (reportDate != null && !reportDate.isEmpty() && !lastDate.isEmpty() && !lastDate.equals(reportDate)) {
+            if (reportDate != null && !reportDate.isEmpty()
+                    && !lastDate.isEmpty() && !lastDate.equals(reportDate)) {
                 lastRow++;
             }
 
-            Map<String, Integer> dedup = new HashMap<>();
+            // 去重索引：按 (A=日期, D=账户ID, G=产品名, J=线名) 四元组
+            Map<String, Integer> existingMap = new HashMap<>();
             for (int i = 0; i < existing.size(); i++) {
                 List<Object> r = existing.get(i);
-                if (r.size() > 3 && r.get(0) != null && r.get(3) != null) {
-                    dedup.put(r.get(0).toString().trim() + "|" + r.get(3).toString().trim(), i);
+                String d = r.size() > 0 && r.get(0) != null ? r.get(0).toString().trim() : "";
+                String aid = r.size() > 3 && r.get(3) != null ? r.get(3).toString().trim() : "";
+                String prod = r.size() > 6 && r.get(6) != null ? r.get(6).toString().trim() : "";
+                String line = r.size() > 9 && r.get(9) != null ? r.get(9).toString().trim() : "";
+                if (!d.isEmpty() && !aid.isEmpty()) {
+                    existingMap.put(d + "|" + aid + "|" + prod + "|" + line, i);
                 }
             }
 
+            // 扩容
             int maxRows = sp.getSheets().get(0).getProperties().getGridProperties().getRowCount();
-            int needed = lastRow + rows.size() + 1;
+            int needed = lastRow + newRows.size() + 1;
             if (needed > maxRows) {
                 sheets.spreadsheets().batchUpdate(spreadsheetId,
                         new BatchUpdateSpreadsheetRequest().setRequests(List.of(
                                 new Request().setAppendDimension(new AppendDimensionRequest()
                                         .setSheetId(sp.getSheets().get(0).getProperties().getSheetId())
-                                        .setDimension("ROWS").setLength(needed - maxRows + 100)))))
+                                        .setDimension("ROWS")
+                                        .setLength(needed - maxRows + 100)))))
                         .execute();
             }
 
+            int updated = 0, inserted = 0;
             List<ValueRange> updates = new ArrayList<>();
-            for (FbReportRow fr : rows) {
-                List<Object> row = fr.toSheetRow();
-                String key = reportDate + "|" + fr.getAccountId();
+            for (List<Object> nr : newRows) {
+                String key = nr.get(0).toString().trim() + "|"
+                        + nr.get(3).toString().trim() + "|"
+                        + nr.get(6).toString().trim() + "|"
+                        + nr.get(9).toString().trim();
                 int target;
-                if (dedup.containsKey(key)) { target = dedup.get(key); updated++; }
-                else { target = lastRow; lastRow++; appended++; }
+                if (existingMap.containsKey(key)) {
+                    target = existingMap.get(key);
+                    updated++;
+                } else {
+                    lastRow++;
+                    target = lastRow;
+                    inserted++;
+                }
                 updates.add(new ValueRange()
                         .setRange("'" + sheetName + "'!A" + (target + 1) + ":L" + (target + 1))
-                        .setValues(List.of(row)));
+                        .setValues(List.of(nr)));
             }
+
             if (!updates.isEmpty()) {
                 sheets.spreadsheets().values().batchUpdate(spreadsheetId,
-                        new BatchUpdateValuesRequest().setValueInputOption("USER_ENTERED").setData(updates)).execute();
+                        new BatchUpdateValuesRequest()
+                                .setValueInputOption("USER_ENTERED")
+                                .setData(updates))
+                        .execute();
             }
-            log.info("[FB-Sheets] upsert: {}更新 {}追加", updated, appended);
+            log.info("[FB-Sheets] upsert: {}更新 {}新增", updated, inserted);
+            return Map.of("updated", updated, "inserted", inserted);
+
         } catch (Exception e) {
-            log.error("[FB-Sheets] 失败: {}", e.getMessage());
+            log.error("[FB-Sheets] 失败: {}", e.getMessage(), e);
             return Map.of("error", e.getMessage());
         }
-        return Map.of("updated", updated, "appended", appended);
     }
 
     // ═══════════ 基础读写 ═══════════
+
     public List<List<Object>> read(String spreadsheetId, String range) throws Exception {
         init();
         if (sheets == null) throw new RuntimeException("Sheets not initialized");

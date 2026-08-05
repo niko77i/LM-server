@@ -51,20 +51,24 @@ public class OptionController {
         return ApiResponse.ok(result);
     }
     @PutMapping("/api/{type}/{id}")
-    /** 更新记录 — 部分字段更新，只改传入的非 null 字段 */
     public ApiResponse<?> update(@PathVariable String type, @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, String> body) {
         validate(type);
         String name = body.get("name");
         if (name == null || name.isBlank()) return ApiResponse.fail("名称不能为空");
-        Object result = optionService.update(type, id, name);
-        return result != null ? ApiResponse.ok(result) : ApiResponse.fail("记录不存在");
+        try {
+            Object result = optionService.update(type, id, name, principal.getUserId());
+            return result != null ? ApiResponse.ok(result) : ApiResponse.fail("记录不存在或无权限");
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.fail(e.getMessage());
+        }
     }
     @DeleteMapping("/api/{type}/{id}")
-    /** 删除记录 */
-    public ApiResponse<Void> delete(@PathVariable String type, @PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable String type, @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
         validate(type);
-        optionService.delete(type, id);
+        optionService.delete(type, id, principal.getUserId());
         return ApiResponse.ok();
     }
 

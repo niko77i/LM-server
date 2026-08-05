@@ -94,7 +94,9 @@ public class FbExtractService {
                 Map<String, String> row = new LinkedHashMap<>();
                 row.put("account_name", am.group(1).trim());
                 row.put("account_id", am.group(2).trim());
-                row.put("cost", distinctCosts.isEmpty() ? "0" : String.valueOf(distinctCosts.get(0)));
+                // 取最大值（对齐 Python: max(dollar_amounts)）
+                double maxCost = distinctCosts.stream().max(Double::compare).orElse(0.0);
+                row.put("cost", String.valueOf(maxCost));
                 data.add(row);
             }
         }
@@ -207,7 +209,8 @@ public class FbExtractService {
             if (taskExecutor == null) { log.info("[FB-Sheets] 异步线程池未配置，跳过Sheets写入"); return saved; }
             taskExecutor.execute(() -> {
                 try {
-                    sheetsService.upsertFbReports(syncLog.getSpreadsheetId(), List.of(), syncLog.getUserId(), syncLog.getProductName(), "");
+                    sheetsService.upsertFbReports(syncLog.getSpreadsheetId(), List.of(),
+                            syncLog.getUserId(), syncLog.getProductName(), "", "", "", null, "");
                     syncLog.setStatus("synced");
                 } catch (Exception e) {
                     log.error("[FB-Sheets] 写入失败: {}", e.getMessage());
