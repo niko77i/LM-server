@@ -161,4 +161,49 @@ public class YoutubeController {
                 v.getUrl(), v.getRegion(), v.getChannelName(), v.getFrameType(),
                 v.getEffectiveness(), v.getReviewStatus(), v.getProductName()));
     }
+
+    /** 批量编辑 — 将指定视频列更新为统一值 */
+    @PostMapping("/batch-edit")
+    public ApiResponse<Integer> batchEdit(@RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        List<String> ids = (List<String>) body.getOrDefault("ids", List.of());
+        String region = (String) body.get("region");
+        String frameType = (String) body.get("frame_type");
+        String effectiveness = (String) body.get("effectiveness");
+        String reviewStatus = (String) body.get("review_status");
+        String productName = (String) body.get("product_name");
+        int count = 0;
+        for (String vid : ids) {
+            Videos v = videosMapper.selectById(vid);
+            if (v != null) {
+                if (region != null) v.setRegion(region);
+                if (frameType != null) v.setFrameType(frameType);
+                if (effectiveness != null) v.setEffectiveness(effectiveness);
+                if (reviewStatus != null) v.setReviewStatus(reviewStatus);
+                if (productName != null) v.setProductName(productName);
+                videosMapper.updateById(v); count++;
+            }
+        }
+        return ApiResponse.ok(count);
+    }
+
+    /** 频道补全 — 通过 yt-dlp 或手工为缺失频道的视频补全 channel_name */
+    @PostMapping("/backfill-channels")
+    public ApiResponse<Map<String, Object>> backfillChannels() {
+        int filled = 0;
+        var videos = videosMapper.selectList(
+                new LambdaQueryWrapper<Videos>().isNull(Videos::getChannelName).or().eq(Videos::getChannelName, ""));
+        for (Videos v : videos) {
+            // 尝试通过 yt-dlp 获取频道名
+            try {
+                Process p = new ProcessBuilder("yt-dlp", "--get-filename", "-o", "%(uploader)s", v.getUrl())
+                        .redirectErrorStream(true).start();
+                String result = new String(p.getInputStream().readAllBytes()).trim();
+                if (!result.isEmpty() && p.waitFor() == 0) {
+                    v.setChannelName(result); videosMapper.updateById(v); filled++;
+                }
+            } catch (Exception ignored) {}
+        }
+        return ApiResponse.ok(Map.of("filled", filled, "total", videos.size()));
+    }
 }

@@ -288,6 +288,89 @@ public class GoogleSheetsController {
         return saved;
     }
 
+    // ═══════════ Sheets 同步状态 + 重试 ═══════════
+
+    /** 查询指定产品的 Sheets 同步失败记录 */
+    @GetMapping("/sync-status")
+    public ApiResponse<?> syncStatus(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam String productName) {
+        var logs = syncLogMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.lmserver.entity.gg.SheetsSyncLog>()
+                        .eq(com.lmserver.entity.gg.SheetsSyncLog::getUserId, principal.getUserId())
+                        .eq(com.lmserver.entity.gg.SheetsSyncLog::getProductName, productName)
+                        .orderByDesc(com.lmserver.entity.gg.SheetsSyncLog::getCreatedAt));
+        return ApiResponse.ok(logs);
+    }
+
+    /** 重试失败的 Sheets 同步 — 重新调用 upsertZuobiao 写入 */
+    @PostMapping("/retry-sync")
+    public ApiResponse<Map<String, Object>> retrySync(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, Object> body) {
+        Long logId = body.get("log_id") != null ? Long.valueOf(body.get("log_id").toString()) : null;
+        if (logId == null) return ApiResponse.fail("缺少 log_id");
+
+        var syncLog = syncLogMapper.selectById(logId);
+        if (syncLog == null || !syncLog.getUserId().equals(principal.getUserId()))
+            return ApiResponse.fail("记录不存在或无权限");
+        if (syncLog.getRowsJson() == null || syncLog.getRowsJson().isBlank())
+            return ApiResponse.fail("无待同步数据");
+
+        try {
+            // 解析存储的行数据并重新写入
+            var rawRows = objectMapper.readValue(syncLog.getRowsJson(),
+                    new com.fasterxml.jackson.core.type.TypeReference<List<List<Object>>>() {});
+            String operatorName = getOperatorName(principal.getUserId(), principal.getUsername());
+
+            // 构建 ZuobiaoRow 列表并重新写入
+            List<ZuobiaoRow> rows = new ArrayList<>();
+            for (var rr : rawRows) {
+                rows.add(ZuobiaoRow.builder()
+                        .account(rr.size() > 2 ? String.valueOf(rr.get(2)) : "")
+                        .customerId(rr.size() > 3 ? String.valueOf(rr.get(3)) : "")
+                        .cost(rr.size() > 4 ? Double.parseDouble(rr.get(4).toString()) : 0)
+                        .campaign(rr.size() > 9 ? String.valueOf(rr.get(9)) : "")
+                        .isYanghu(false).build());
+            }
+
+            Map<String, Object> result = sheetsService.upsertZuobiao(
+                    syncLog.getSpreadsheetId(), rows, syncLog.getProductName(), "", "",
+                    "", null, operatorName);
+
+            if (!result.containsKey("error")) {
+                syncLog.setStatus("synced");
+                syncLog.setErrorMsg(null);
+                syncLog.setUpdatedAt(java.time.LocalDateTime.now());
+                syncLogMapper.updateById(syncLog);
+            }
+            return ApiResponse.ok(result);
+        } catch (Exception e) {
+            log.error("重试同步失败: {}", e.getMessage());
+            return ApiResponse.fail("重试失败: " + e.getMessage());
+        }
+    }
+
+    /** 查询 Sheets 配置状态 — 返回服务账号信息和表格列表 */
+    @GetMapping("/status")
+    public ApiResponse<Map<String, Object>> status(@AuthenticationPrincipal UserPrincipal principal) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("configured", new java.io.File(credentialsPath).exists());
+        try {
+            // 读取用户配置的表格列表
+            var cfg = configMapper.selectOne(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.lmserver.entity.common.Config>()
+                            .eq(com.lmserver.entity.common.Config::getKey, "google_sheets_" + principal.getUserId()));
+            if (cfg != null && cfg.getValue() != null) {
+                result.put("sheets", objectMapper.readValue(cfg.getValue(),
+                        new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {}));
+            }
+        } catch (Exception ignored) {}
+        return ApiResponse.ok(result);
+    }
+
+    @Autowired private com.lmserver.mapper.gg.SheetsSyncLogMapper syncLogMapper;
+    @org.springframework.beans.factory.annotation.Value("${google.sheets.credentials-path}")
+    private String credentialsPath;
+
     private int toInt(Object v) {
         if (v == null) return 0;
         if (v instanceof Number n) return n.intValue();

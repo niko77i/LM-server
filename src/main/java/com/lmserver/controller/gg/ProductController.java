@@ -45,11 +45,44 @@ public class ProductController {
         return productService.list(principal.getUserId(), page, size, search, region, status);
     }
 
+    /** 产品详情 — 含包列表/runners/关联账户/MCC信息 */
     @GetMapping("/{id}/detail")
-    /** 获取单条记录详情 — 按主键 ID 查询 */
-    public ApiResponse<Products> detail(@PathVariable Long id) {
+    public ApiResponse<Map<String, Object>> detail(@PathVariable Long id) {
         Products p = productService.getById(id);
-        return p != null ? ApiResponse.ok(p) : ApiResponse.fail("产品不存在");
+        if (p == null) return ApiResponse.fail("产品不存在");
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("product", p);
+        // 包列表（按 status 排序）
+        m.put("packages", packagesMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Packages>()
+                        .eq(Packages::getProductId, id)));
+        // 在跑人员
+        m.put("runners", productRunnersMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductRunners>()
+                        .eq(ProductRunners::getProductId, id)));
+        // 关联账户（MCC 及子MCC 下的所有账户）
+        if (p.getMccId() != null) {
+            List<Map<String, Object>> accts = new ArrayList<>();
+            collectMccAccounts(p.getMccId(), accts, new HashSet<>());
+            m.put("accounts", accts);
+        }
+        return ApiResponse.ok(m);
+    }
+
+    @Autowired private com.lmserver.mapper.gg.AccountsMapper accountsMapper;
+
+    /** 递归收集 MCC 及子MCC 下的所有账户 */
+    private void collectMccAccounts(Long mccId, List<Map<String, Object>> result, Set<Long> visited) {
+        if (!visited.add(mccId)) return;
+        var accts = accountsMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Accounts>()
+                        .eq(Accounts::getMccId, mccId).isNull(Accounts::getDeletedAt));
+        for (var a : accts)
+            result.add(Map.of("id", a.getId(), "name", a.getName(), "account_id", a.getAccountId(), "status_id", a.getStatusId()));
+        var children = mccMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Mcc>()
+                        .eq(Mcc::getParentMccId, mccId));
+        for (var c : children) collectMccAccounts(c.getId(), result, visited);
     }
 
     @PostMapping("/create")

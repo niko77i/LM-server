@@ -205,4 +205,26 @@ public class VideoController {
         resp.setHeader("Content-Disposition", "attachment; filename=\"" + f.getName() + "\"");
         try (java.io.FileInputStream in = new java.io.FileInputStream(f)) { in.transferTo(resp.getOutputStream()); }
     }
+
+    /** 删除视频生成历史记录 */
+    @DeleteMapping("/video/history/{id}")
+    public ApiResponse<Void> deleteHistory(@PathVariable Long id) {
+        videoHistoryMapper.deleteById(id);
+        return ApiResponse.ok();
+    }
+
+    /** 文件名冲突检测 — 返回不冲突的下一个文件名 (name → name_1, name_2...) */
+    @PostMapping("/video/next-filename")
+    public ApiResponse<String> nextFilename(@RequestBody Map<String, String> body) {
+        String base = body.getOrDefault("name", "output");
+        String ext = body.getOrDefault("ext", ".mp4");
+        if (!base.endsWith(ext)) base += ext;
+        String name = base;
+        int i = 1;
+        while (new java.io.File(name).exists()) {
+            int dot = base.lastIndexOf('.');
+            name = base.substring(0, dot) + "_" + (i++) + base.substring(dot);
+        }
+        return ApiResponse.ok(name);
+    }
 }
