@@ -87,19 +87,6 @@ public class AdReportController {
         }
     }
 
-    @GetMapping("/stats")
-    public ApiResponse<Map<String, Object>> stats(@AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(required = false) String productName) {
-        var qw = new LambdaQueryWrapper<AdReports>().eq(AdReports::getUserId, principal.getUserId());
-        if (productName != null && !productName.isBlank()) qw.eq(AdReports::getProductName, productName);
-        var list = mapper.selectList(qw);
-        double totalCost = list.stream().mapToDouble(r -> r.getCost() != null ? r.getCost() : 0).sum();
-        long totalImpr = list.stream().mapToLong(r -> r.getImpressions() != null ? r.getImpressions() : 0).sum();
-        long totalClicks = list.stream().mapToLong(r -> r.getClicks() != null ? r.getClicks() : 0).sum();
-        return ApiResponse.ok(Map.of("totalCost", totalCost, "totalImpressions", totalImpr,
-                "totalClicks", totalClicks, "recordCount", list.size()));
-    }
-
     @PostMapping("/batch-delete")
     public ApiResponse<Integer> batchDelete(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, List<Long>> body) {
