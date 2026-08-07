@@ -114,7 +114,8 @@ public class ProductController {
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductAssets>()
                         .eq(ProductAssets::getProductId, id)));
 
-        return ApiResponse.ok(Map.of("product", (Object) product));
+        ApiResponse<Map<String, Object>> resp = ApiResponse.ok(product);
+        return resp;
     }
 
     @Autowired private com.lmserver.mapper.gg.AccountsMapper accountsMapper;
