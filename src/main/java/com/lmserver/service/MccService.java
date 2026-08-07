@@ -7,9 +7,10 @@ package com.lmserver.service;
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.gg.Mcc;
 import java.util.List;
+import java.util.Map;
 public interface MccService {
 
-    PagedResponse<Mcc> list(Long ownerId, int page, int size, String search, Long levelId);
+    PagedResponse<Map<String, Object>> list(Long ownerId, int page, int size, String search, Long levelId);
 
     Mcc getById(Long id);
 

@@ -49,7 +49,7 @@ public class MccController {
     @Autowired private ProductsMapper productsMapper;
 
     @GetMapping("/list")
-    public PagedResponse<Mcc> list(@AuthenticationPrincipal UserPrincipal principal,
+    public PagedResponse<Map<String, Object>> list(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String search, @RequestParam(required = false) Long levelId) {
         return mccService.list(principal.getUserId(), page, size, search, levelId);
