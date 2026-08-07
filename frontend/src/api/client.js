@@ -24,14 +24,7 @@ api.interceptors.response.use(
   resp => {
     const newToken = resp.headers['x-new-access-token']
     if (newToken) localStorage.setItem('token', newToken)
-    const body = resp.data
-    // 自动展平 ApiResponse: {success, data:{...}} → {success, ...data}
-    // PagedResponse {success, items, total} 无 data 字段，直接透传
-    if (body && typeof body.success === 'boolean'
-        && body.data && typeof body.data === 'object' && !Array.isArray(body.data)) {
-      return { success: body.success, error: body.error, ...body.data }
-    }
-    return body
+    return resp.data
   },
   err => {
     if (err.response?.status === 401 && !err.config.url?.includes('/auth/')) {
