@@ -5,6 +5,7 @@ import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.gg.*;
 import com.lmserver.entity.common.AuditLog;
 import com.lmserver.mapper.gg.*;
+import com.lmserver.mapper.common.SalesPersonsMapper;
 import com.lmserver.security.UserPrincipal;
 import com.lmserver.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class ProductController {
     @Autowired private com.lmserver.mapper.gg.MccMapper mccMapper;
     @Autowired private com.lmserver.mapper.gg.ProductRunnersMapper productRunnersMapper;
     @Autowired private com.lmserver.mapper.common.UsersMapper usersMapper;
+    @Autowired private com.lmserver.mapper.common.SalesPersonsMapper salesPersonsMapper;
 
     @GetMapping("/list")
     /** 分页列表查询 — 支持多条件筛选 */
@@ -45,28 +47,74 @@ public class ProductController {
         return productService.list(principal.getUserId(), page, size, search, region, status);
     }
 
-    /** 产品详情 — 含包列表/runners/关联账户/MCC信息 */
+    /** 产品详情 — 含包列表/runners/关联账户/MCC信息，所有字段对齐前端期望 */
     @GetMapping("/{id}/detail")
     public ApiResponse<Map<String, Object>> detail(@PathVariable Long id) {
         Products p = productService.getById(id);
         if (p == null) return ApiResponse.fail("产品不存在");
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("product", p);
-        // 包列表（按 status 排序）
-        m.put("packages", packagesMapper.selectList(
+
+        // 构建产品富对象
+        Map<String, Object> product = new LinkedHashMap<>();
+        product.put("id", p.getId());
+        product.put("product_name", p.getProductName());
+        product.put("kpi", p.getKpi());
+        product.put("region", p.getRegion());
+        product.put("status", p.getStatus());
+        product.put("customer", p.getCustomer());
+        product.put("owner_id", p.getOwnerId());
+        product.put("agency_ratio", p.getAgencyRatio());
+        product.put("is_archived", p.getIsArchived());
+        product.put("created_at", p.getCreatedAt());
+        product.put("runner_ids", p.getRunnerIds());
+        product.put("mcc_id", p.getMccId());
+        product.put("sales_person_id", p.getSalesPersonId());
+
+        // JOIN: MCC
+        if (p.getMccId() != null) {
+            Mcc mcc = mccMapper.selectById(p.getMccId());
+            if (mcc != null) {
+                product.put("mcc_name", mcc.getName());
+                product.put("mcc_code", mcc.getMccId());
+            }
+        }
+        // JOIN: sales_person
+        if (p.getSalesPersonId() != null) {
+            var sp = salesPersonsMapper.selectById(p.getSalesPersonId());
+            if (sp != null) product.put("sales_person", sp.getName());
+        }
+
+        // 包列表
+        var pkgs = packagesMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Packages>()
-                        .eq(Packages::getProductId, id)));
+                        .eq(Packages::getProductId, id));
+        product.put("packages", pkgs);
+
+        // 关联账户 + status_count
+        List<Map<String, Object>> relatedAccounts = new ArrayList<>();
+        Map<String, Long> statusCount = new LinkedHashMap<>();
+        if (p.getMccId() != null) {
+            collectMccAccounts(p.getMccId(), relatedAccounts, new HashSet<>());
+            for (var acct : relatedAccounts) {
+                Object st = acct.get("status");
+                String sname = st != null ? st.toString() : "未知";
+                statusCount.merge(sname, 1L, Long::sum);
+            }
+        }
+        product.put("related_account_count", relatedAccounts.size());
+        product.put("status_count", statusCount);
+        product.put("related_accounts", relatedAccounts);
+
         // 在跑人员
-        m.put("runners", productRunnersMapper.selectList(
+        product.put("runners", productRunnersMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductRunners>()
                         .eq(ProductRunners::getProductId, id)));
-        // 关联账户（MCC 及子MCC 下的所有账户）
-        if (p.getMccId() != null) {
-            List<Map<String, Object>> accts = new ArrayList<>();
-            collectMccAccounts(p.getMccId(), accts, new HashSet<>());
-            m.put("accounts", accts);
-        }
-        return ApiResponse.ok(m);
+
+        // 素材数
+        product.put("asset_count", productAssetsMapper.selectCount(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductAssets>()
+                        .eq(ProductAssets::getProductId, id)));
+
+        return ApiResponse.ok(Map.of("product", (Object) product));
     }
 
     @Autowired private com.lmserver.mapper.gg.AccountsMapper accountsMapper;
