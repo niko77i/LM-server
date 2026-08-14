@@ -31,6 +31,9 @@ config/service-account.json
 src/main/resources/fit-boulevard-503111-u4-812bc02c2000.json
 src/main/resources/google_sheets_credentials.json
 
+# Database dump (sensitive test data — 含真实业务数据，禁止提交)
+src/main/resources/data.sql
+
 # Temp
 temp/
 
