@@ -13,12 +13,16 @@ spring:
   application:
     name: lm-server
 
+  # 默认激活 local profile（加载 application-local.yml 中的敏感配置）
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
   # MySQL 数据库
   datasource:
     url: jdbc:mysql://localhost:3306/lmserver?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: ${MYSQL_PASSWORD:123456}
+    password: ${MYSQL_PASSWORD:}
     hikari:
       maximum-pool-size: 30
       minimum-idle: 10
@@ -31,7 +35,7 @@ spring:
     host: smtp.qq.com
     port: 465
     username: 2350574164@qq.com
-    password: ${SMTP_PASSWORD:vassdzilljbpdibe}
+    password: ${SMTP_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -75,15 +79,15 @@ springdoc:
 
 # JWT 配置
 jwt:
-  secret: ${JWT_SECRET:Z2ctc2VydmVyLWp3dC1zZWNyZXQtMjAyNi1jaGFuZ2UtaW4tcHJvZHVjdGlvbg==}
+  secret: ${JWT_SECRET:}
   access-token-expiration: 3600000
   refresh-token-expiration: 2592000000
 
 # 通知配置
 notification:
   telegram:
-    bot-token: ${TELEGRAM_BOT_TOKEN:8705623419:AAHTV7MUQ9xlYe2FGzwgJFJI6AI_afeu07Y}
-    chat-id: "${TELEGRAM_CHAT_ID:-5220122275}"
+    bot-token: ${TELEGRAM_BOT_TOKEN:}
+    chat-id: "${TELEGRAM_CHAT_ID:}"
 
 # FFmpeg
 ffmpeg:
