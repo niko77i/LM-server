@@ -180,7 +180,7 @@ public class GoogleSheetsController {
     // ── 基础读写 ──
 
     @GetMapping("/read")
-    public ApiResponse<List<List<Object>>> read(@RequestParam String spreadsheetId,
+    public ApiResponse<List<List<Object>>> read(@RequestParam(name = "spreadsheet_id") String spreadsheetId,
             @RequestParam(defaultValue = "A1:Z1000") String range) {
         try {
             List<List<Object>> values = sheetsService.read(spreadsheetId, range);
@@ -189,6 +189,26 @@ public class GoogleSheetsController {
             log.error("Sheet 读取失败", e);
             return ApiResponse.fail("读取失败: " + e.getMessage());
         }
+    }
+
+    /** 列出 spreadsheet 的所有 sheet 名（前端下拉用），返回 {success, sheets:[{name}]} */
+    @GetMapping("/sheets")
+    public Map<String, Object> listSheets(@RequestParam(name = "spreadsheet_id") String spreadsheetId) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        try {
+            List<String> names = sheetsService.listSheets(spreadsheetId);
+            List<Map<String, String>> sheets = new ArrayList<>();
+            for (String name : names) {
+                sheets.add(Map.of("name", name));
+            }
+            result.put("success", true);
+            result.put("sheets", sheets);
+        } catch (Exception e) {
+            log.error("Sheet 列表获取失败", e);
+            result.put("success", false);
+            result.put("error", "获取失败: " + e.getMessage());
+        }
+        return result;
     }
 
     @PostMapping("/write")

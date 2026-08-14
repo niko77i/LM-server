@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lmserver.mapper.fb.FbProductsMapper">
+
+    <select id="selectFbProductDtos" resultType="com.lmserver.dto.response.FbProductDto">
+        SELECT p.*,
+               sp.name AS sales_person_name
+        FROM fb_products p
+        LEFT JOIN sales_persons sp ON p.sales_person_id = sp.id
+        <where>
+            p.owner_id = #{ownerId}
+            <if test="search != null and search != ''">
+                AND p.product_name LIKE CONCAT('%', #{search}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND p.status = #{status}
+            </if>
+        </where>
+        ORDER BY p.created_at DESC
+    </select>
+
+    <select id="selectFbProductDtoById" resultType="com.lmserver.dto.response.FbProductDto">
+        SELECT p.*,
+               sp.name AS sales_person_name
+        FROM fb_products p
+        LEFT JOIN sales_persons sp ON p.sales_person_id = sp.id
+        WHERE p.id = #{id}
+    </select>
+
+</mapper>

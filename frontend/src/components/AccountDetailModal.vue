@@ -15,10 +15,10 @@
           <span v-else class="text-muted">未分配</span>
         </div>
         <div><strong>时区：</strong>{{ account.timezone || '-' }}</div>
-        <div><strong>代理：</strong>{{ account.agent || '-' }}</div>
+        <div><strong>代理：</strong>{{ account.agent_name || '-' }}</div>
         <div>
           <strong>状态：</strong>
-          <el-tag size="small" :type="statusTagType(account.status)">{{ account.status || '未知' }}</el-tag>
+          <el-tag size="small" :type="statusTagType(account.status_name)">{{ account.status_name || '未知' }}</el-tag>
         </div>
         <div><strong>状态变更时间：</strong>{{ account.status_changed_date || '-' }}</div>
         <div><strong>到手时间：</strong>{{ account.acquired_date || '-' }}</div>
@@ -44,12 +44,12 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="agent" label="代理" width="80">
+        <el-table-column prop="agent_name" label="代理" width="80">
           <template #default="{ row }">
             <template v-if="editingId === row.id">
               <el-input v-model="editForm.agent" size="small" style="width:70px;" @keyup.enter="saveEdit(row)" />
             </template>
-            <template v-else>{{ row.agent }}</template>
+            <template v-else>{{ row.agent_name }}</template>
           </template>
         </el-table-column>
         <el-table-column prop="operator" label="运营" width="80" />
@@ -199,7 +199,7 @@ async function deleteHistory(hid) {
 function startEdit(row) {
   editingId.value = row.id
   editForm.amount = row.amount
-  editForm.agent = row.agent || ''
+  editForm.agent = row.agent_name || ''
 }
 
 function cancelEdit() {
@@ -211,7 +211,7 @@ async function saveEdit(row) {
   try {
     await rechargeApi.update(row.id, { amount: editForm.amount, agent: editForm.agent })
     row.amount = editForm.amount
-    row.agent = editForm.agent
+    row.agent_name = editForm.agent
     editingId.value = null
     ElMessage.success('已更新')
   } catch (e) {

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.*;
 
 /**
@@ -32,14 +33,17 @@ public class GoogleSheetsService {
 
     private synchronized void init() {
         if (initialized) return;
-        if (!new java.io.File(credentialsPath).exists()) {
-            log.warn("Google Sheets 凭证不存在: {}", credentialsPath);
-            initialized = true;
-            return;
-        }
         try {
+            // 优先从 classpath 加载（不依赖工作目录），回退文件系统
+            String resourcePath = credentialsPath
+                    .replace("src/main/resources/", "")
+                    .replace("classpath:", "");
+            InputStream is = getClass().getClassLoader().getResourceAsStream(resourcePath);
+            if (is == null) {
+                is = new FileInputStream(credentialsPath);
+            }
             GoogleCredentials creds = GoogleCredentials
-                    .fromStream(new FileInputStream(credentialsPath))
+                    .fromStream(is)
                     .createScoped("https://www.googleapis.com/auth/spreadsheets");
             sheets = new Sheets.Builder(
                     GoogleNetHttpTransport.newTrustedTransport(),
@@ -388,5 +392,21 @@ public class GoogleSheetsService {
         if (sheets == null) throw new RuntimeException("Sheets not initialized");
         sheets.spreadsheets().values().update(spreadsheetId, range,
                 new ValueRange().setValues(values)).setValueInputOption("USER_ENTERED").execute();
+    }
+
+    /** 列出指定 spreadsheet 的所有 sheet 名称 */
+    public List<String> listSheets(String spreadsheetId) throws Exception {
+        init();
+        if (sheets == null) throw new RuntimeException("Sheets not initialized");
+        Spreadsheet sp = sheets.spreadsheets().get(spreadsheetId).execute();
+        List<String> names = new ArrayList<>();
+        if (sp.getSheets() != null) {
+            for (Sheet s : sp.getSheets()) {
+                if (s.getProperties() != null && s.getProperties().getTitle() != null) {
+                    names.add(s.getProperties().getTitle());
+                }
+            }
+        }
+        return names;
     }
 }

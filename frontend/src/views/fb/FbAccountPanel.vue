@@ -133,7 +133,7 @@ async function loadData() {
 }
 async function loadOptions() {
   try { const r = await fbApi.bmOptions(); bmOptions.value = r.data || [] } catch(e) { console.warn('loadOptions bm', e) }
-  try { const r = await client.get('/statuses/list'); statusOptions.value = r.statuses || r.data || [] } catch(e) { console.warn('loadOptions statuses', e) }
+  try { const r = await client.get('/statuses/list'); statusOptions.value = r.items || [] } catch(e) { console.warn('loadOptions statuses', e) }
 }
 
 function openCreate() {

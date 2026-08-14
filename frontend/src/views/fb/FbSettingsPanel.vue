@@ -100,9 +100,9 @@ const salesPersons = ref([]); const newSalesName = ref('')
 const statuses = ref([]); const newStatusName = ref('')
 
 async function loadData() {
-  try { const r = await client.get('/sales-persons/list'); salesPersons.value = r.sales_persons || [] } catch(e) { console.warn(e) }
-  try { const r = await client.get('/statuses/list'); statuses.value = r.statuses || r.data || [] } catch(e) { console.warn(e) }
-  try { const r = await client.get('/regions/list'); regionOptions.value = (r.regions || []).map(r => typeof r === 'string' ? { name: r, timezone: '' } : r) } catch(e) { console.warn(e) }
+  try { const r = await client.get('/sales-persons/list'); salesPersons.value = r.items || [] } catch(e) { console.warn(e) }
+  try { const r = await client.get('/statuses/list'); statuses.value = r.items || [] } catch(e) { console.warn(e) }
+  try { const r = await client.get('/regions/list'); regionOptions.value = (r.items || []).map(r => typeof r === 'string' ? { name: r, timezone: '' } : r) } catch(e) { console.warn(e) }
 }
 
 // 地区

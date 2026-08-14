@@ -2,11 +2,13 @@ package com.lmserver.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.lmserver.dto.response.PagedResponse;
+import com.lmserver.dto.response.AccountDto;
+import com.lmserver.dto.response.AccountListResponse;
 import com.lmserver.dto.response.SyncResult;
 import com.lmserver.entity.gg.Accounts;
 import com.lmserver.entity.gg.RechargeRecords;
 import com.lmserver.entity.gg.AccountMccHistory;
+import com.lmserver.entity.gg.Mcc;
 import com.lmserver.mapper.gg.AccountMccHistoryMapper;
 import com.lmserver.mapper.gg.AccountsMapper;
 import com.lmserver.mapper.gg.RechargeRecordsMapper;
@@ -15,12 +17,12 @@ import com.lmserver.service.GoogleSheetsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -37,75 +39,73 @@ public class AccountServiceImpl implements AccountService {
     private RechargeServiceImpl rechargeService;
     @Autowired
     private GoogleSheetsService sheetsService;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     // ═══════ 查询 ═══════
 
     @Override
-    public PagedResponse<Map<String, Object>> list(Long ownerId, int page, int size, String search, Long statusId, Long mccId, Long agentId) {
-        var qw = new LambdaQueryWrapper<Accounts>().eq(Accounts::getOwnerId, ownerId).isNull(Accounts::getDeletedAt);
-        if (search != null && !search.isBlank())
-            qw.and(w -> w.like(Accounts::getName, search).or().like(Accounts::getAccountId, search));
-        if (statusId != null) qw.eq(Accounts::getStatusId, statusId);
-        if (mccId != null) qw.eq(Accounts::getMccId, mccId);
-        if (agentId != null) qw.eq(Accounts::getAgentId, agentId);
-        qw.orderByDesc(Accounts::getCreatedAt);
-        var pg = accountsMapper.selectPage(new Page<>(page, size), qw);
+    public AccountListResponse list(Long ownerId, int page, int size, String search, String status, Long mccId, String agent) {
+        Page<AccountDto> pg = new Page<>(page, size);
+        List<AccountDto> items = accountsMapper.selectAccountDtos(pg, ownerId,
+                search != null && !search.isBlank() ? search : null,
+                status != null && !status.isBlank() ? status : null,
+                mccId,
+                agent != null && !agent.isBlank() ? agent : null);
 
-        // Batch-load related data
-        var allMcc = new HashMap<Long, com.lmserver.entity.gg.Mcc>();
-        var allAgents = new HashMap<Long, com.lmserver.entity.common.Agents>();
-        var allStatuses = new HashMap<Long, com.lmserver.entity.common.AccountStatuses>();
-        for (Accounts a : pg.getRecords()) {
-            if (a.getMccId() != null && !allMcc.containsKey(a.getMccId()))
-                allMcc.put(a.getMccId(), mccMapper.selectById(a.getMccId()));
-            if (a.getAgentId() != null && !allAgents.containsKey(a.getAgentId()))
-                allAgents.put(a.getAgentId(), agentsMapper.selectById(a.getAgentId()));
-            if (a.getStatusId() != null && !allStatuses.containsKey(a.getStatusId()))
-                allStatuses.put(a.getStatusId(), statusesMapper.selectById(a.getStatusId()));
-        }
+        AccountListResponse resp = new AccountListResponse();
+        resp.setItems(items);
+        resp.setTotal(pg.getTotal());
+        resp.setPage(page);
+        resp.setSize(size);
+        resp.setStatusCounts(queryStatusCounts(ownerId));
+        resp.setMccOptions(queryMccOptions(ownerId));
+        resp.setTimezoneOptions(queryTimezoneOptions(ownerId));
+        return resp;
+    }
 
-        // Build enriched rows
-        List<Map<String, Object>> items = new ArrayList<>();
-        for (Accounts a : pg.getRecords()) {
-            var mcc = allMcc.get(a.getMccId());
-            var agent = allAgents.get(a.getAgentId());
-            var st = allStatuses.get(a.getStatusId());
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("id", a.getId()); row.put("name", a.getName()); row.put("account_id", a.getAccountId());
-            row.put("mcc_id", a.getMccId()); row.put("agent_id", a.getAgentId()); row.put("status_id", a.getStatusId());
-            row.put("timezone", a.getTimezone()); row.put("owner_id", a.getOwnerId());
-            row.put("acquired_date", a.getAcquiredDate()); row.put("death_date", a.getDeathDate());
-            row.put("status_changed_date", a.getStatusChangedDate()); row.put("created_at", a.getCreatedAt());
-            row.put("deleted_at", a.getDeletedAt());
-            // JOIN names
-            row.put("mcc_name", mcc != null ? mcc.getName() : null);
-            row.put("mcc_code", mcc != null ? mcc.getMccId() : null);
-            row.put("agent", agent != null ? agent.getName() : null);
-            row.put("status", st != null ? st.getName() : null);
-            items.add(row);
-        }
+    /** 各状态账户数（前端状态筛选按钮用） */
+    private Map<String, Long> queryStatusCounts(Long ownerId) {
+        Map<String, Long> counts = new LinkedHashMap<>();
+        try {
+            for (Map<String, Object> row : jdbcTemplate.queryForList(
+                    "SELECT COALESCE(st.name, '未知') AS status, COUNT(*) AS cnt " +
+                    "FROM accounts a LEFT JOIN account_statuses st ON a.status_id = st.id " +
+                    "WHERE a.owner_id = ? AND a.deleted_at IS NULL GROUP BY st.name", ownerId)) {
+                String name = String.valueOf(row.get("status"));
+                counts.merge(name, ((Number) row.get("cnt")).longValue(), Long::sum);
+            }
+        } catch (Exception e) { log.warn("status_counts 查询失败: {}", e.getMessage()); }
+        return counts;
+    }
 
-        // Build extra metadata for frontend filters
-        Map<String, Long> statusCounts = new LinkedHashMap<>();
-        for (Accounts a : accountsMapper.selectList(
-                new LambdaQueryWrapper<Accounts>().eq(Accounts::getOwnerId, ownerId).isNull(Accounts::getDeletedAt))) {
-            var st = allStatuses.get(a.getStatusId());
-            String name = st != null ? st.getName() : "未知";
-            statusCounts.merge(name, 1L, Long::sum);
+    /** MCC 下拉选项 */
+    private List<Map<String, Object>> queryMccOptions(Long ownerId) {
+        List<Map<String, Object>> options = new ArrayList<>();
+        for (Mcc m : mccMapper.selectList(new LambdaQueryWrapper<Mcc>().eq(Mcc::getOwnerId, ownerId))) {
+            Map<String, Object> opt = new LinkedHashMap<>();
+            opt.put("id", m.getId());
+            opt.put("name", m.getName());
+            opt.put("mcc_id", m.getMccId());
+            options.add(opt);
         }
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("items", items);
-        result.put("total", pg.getTotal());
-        result.put("page", page);
-        result.put("size", size);
-        result.put("status_counts", statusCounts);
-        result.put("mcc_options", mccMapper.selectList(
-                new LambdaQueryWrapper<com.lmserver.entity.gg.Mcc>().eq(com.lmserver.entity.gg.Mcc::getOwnerId, ownerId))
-                .stream().map(m -> { Map<String, Object> opt = new LinkedHashMap<>(); opt.put("id", m.getId()); opt.put("name", m.getName()); opt.put("mcc_id", m.getMccId()); return opt; }).toList());
-        result.put("timezone_options", accountsMapper.selectList(
-                new LambdaQueryWrapper<Accounts>().select(Accounts::getTimezone).eq(Accounts::getOwnerId, ownerId).isNull(Accounts::getDeletedAt))
-                .stream().map(Accounts::getTimezone).filter(tz -> tz != null && !tz.isBlank()).distinct().sorted().toList());
-        return PagedResponse.of(items, pg.getTotal(), page, size);
+        return options;
+    }
+
+    /** 时区下拉选项 */
+    private List<String> queryTimezoneOptions(Long ownerId) {
+        return accountsMapper.selectList(new LambdaQueryWrapper<Accounts>()
+                .select(Accounts::getTimezone)
+                .eq(Accounts::getOwnerId, ownerId)
+                .isNull(Accounts::getDeletedAt))
+                .stream().map(Accounts::getTimezone)
+                .filter(tz -> tz != null && !tz.isBlank())
+                .distinct().sorted().toList();
+    }
+
+    @Override
+    public AccountDto detail(Long id) {
+        return accountsMapper.selectAccountDtoById(id);
     }
 
     @Override

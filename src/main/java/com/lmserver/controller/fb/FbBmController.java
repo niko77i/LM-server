@@ -3,6 +3,7 @@ package com.lmserver.controller.fb;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lmserver.dto.response.ApiResponse;
+import com.lmserver.dto.response.FbBmDto;
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.fb.*;
 import com.lmserver.mapper.fb.*;
@@ -36,7 +37,7 @@ public class FbBmController {
     @Autowired private FbPixelsMapper pixelsMapper;
 
     @GetMapping("/list")
-    public PagedResponse<FbBms> list(@AuthenticationPrincipal UserPrincipal principal,
+    public PagedResponse<FbBmDto> list(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String search, @RequestParam(required = false) String status) {
         return fbService.listBms(principal.getUserId(), page, size, search, status);
@@ -76,66 +77,34 @@ public class FbBmController {
 
     /** 统一列表 — UNION fb_bms + fb_pixel_bms，对齐 Python unified */
     @GetMapping("/unified")
-    public PagedResponse<Map<String, Object>> unified(@AuthenticationPrincipal UserPrincipal principal,
+    public PagedResponse<FbBmDto> unified(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String search, @RequestParam(required = false) String status,
-            @RequestParam(required = false) String bmType) {
+            @RequestParam(name="bm_type", required = false) String bmType) {
         Long uid = principal.getUserId();
+        List<FbBmDto> all = bmsMapper.selectFbBmDtos(uid);
 
-        // fb_bms
-        var bmQw = new LambdaQueryWrapper<FbBms>().eq(FbBms::getOwnerId, uid);
-        if (status != null) bmQw.eq(FbBms::getStatus, status);
-        if (search != null && !search.isBlank())
-            bmQw.and(w -> w.like(FbBms::getName, search).or().like(FbBms::getBmId, search));
-
-        // fb_pixel_bms
-        var pxQw = new LambdaQueryWrapper<FbPixelBms>().eq(FbPixelBms::getOwnerId, uid);
-        if (status != null) pxQw.eq(FbPixelBms::getStatus, status);
-        if (search != null && !search.isBlank())
-            pxQw.and(w -> w.like(FbPixelBms::getName, search).or().like(FbPixelBms::getBmId, search));
-
-        List<Map<String, Object>> all = new ArrayList<>();
-
-        // "pixel_bm" 类型筛选只查像素 BM
-        if (bmType == null || !"pixel_bm".equals(bmType)) {
-            for (FbBms bm : bmsMapper.selectList(bmQw)) {
-                Map<String, Object> item = new HashMap<>();
-                item.put("id", bm.getId());
-                item.put("name", bm.getName());
-                item.put("bm_id", bm.getBmId());
-                item.put("status", bm.getStatus());
-                item.put("owner_id", bm.getOwnerId());
-                item.put("bm_type", "normal");
-                // account_count
-                item.put("account_count", accountBmMapper.selectCount(
-                        new LambdaQueryWrapper<FbAccountBm>().eq(FbAccountBm::getBmId, bm.getId())));
-                item.put("pixel_count", 0);
-                all.add(item);
-            }
+        // 搜索过滤
+        if (search != null && !search.isBlank()) {
+            all = all.stream().filter(item ->
+                (item.getName() != null && item.getName().contains(search)) ||
+                (item.getBmId() != null && item.getBmId().contains(search))
+            ).toList();
+        }
+        // 状态过滤
+        if (status != null && !status.isBlank()) {
+            all = all.stream().filter(item -> status.equals(item.getStatus())).toList();
+        }
+        // 类型过滤
+        if (bmType != null && !bmType.isBlank()) {
+            all = all.stream().filter(item -> bmType.equals(item.getBmType())).toList();
         }
 
-        // "normal" 类型筛选只查普通 BM
-        if (bmType == null || !"normal".equals(bmType)) {
-            for (FbPixelBms px : pixelBmsMapper.selectList(pxQw)) {
-                Map<String, Object> item = new HashMap<>();
-                item.put("id", px.getId());
-                item.put("name", px.getName());
-                item.put("bm_id", px.getBmId());
-                item.put("status", px.getStatus());
-                item.put("owner_id", px.getOwnerId());
-                item.put("bm_type", "pixel_bm");
-                item.put("account_count", 0);
-                item.put("pixel_count", pixelsMapper.selectCount(
-                        new LambdaQueryWrapper<FbPixels>().eq(FbPixels::getPixelBmId, px.getId())));
-                all.add(item);
-            }
-        }
-
-        // 手动分页
+        // 分页
         int total = all.size();
         int from = (page - 1) * size;
         int to = Math.min(from + size, total);
-        List<Map<String, Object>> items = from < total ? all.subList(from, to) : List.of();
+        List<FbBmDto> items = from < total ? all.subList(from, to) : List.of();
         return PagedResponse.of(items, total, page, size);
     }
 

@@ -2,6 +2,7 @@ package com.lmserver.controller.gg;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lmserver.dto.response.ApiResponse;
+import com.lmserver.dto.response.MccDto;
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.gg.Accounts;
 import com.lmserver.entity.gg.Mcc;
@@ -49,15 +50,15 @@ public class MccController {
     @Autowired private ProductsMapper productsMapper;
 
     @GetMapping("/list")
-    public PagedResponse<Map<String, Object>> list(@AuthenticationPrincipal UserPrincipal principal,
+    public PagedResponse<MccDto> list(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String search, @RequestParam(required = false) Long levelId) {
-        return mccService.list(principal.getUserId(), page, size, search, levelId);
+            @RequestParam(required = false) String search, @RequestParam(required = false) String level) {
+        return mccService.list(principal.getUserId(), page, size, search, level);
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<Mcc> detail(@PathVariable Long id) {
-        Mcc m = mccService.getById(id);
+    public ApiResponse<MccDto> detail(@PathVariable Long id) {
+        MccDto m = mccService.detail(id);
         return m != null ? ApiResponse.ok(m) : ApiResponse.fail("MCC不存在");
     }
 

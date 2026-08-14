@@ -249,7 +249,7 @@ async function loadData() {
     if (searchKeyword.value) params.search = searchKeyword.value
 
     const data = await reportsApi.list(params)
-    reports.value = (data.reports || []).map(r => ({
+    reports.value = (data.items || []).map(r => ({
       ...r,
       display_product: r.resolved_product_name || r.product_name
     }))
@@ -350,13 +350,13 @@ async function handleSave() {
         report_date: form.report_date,
         rows: [{
           account: form.account,
-          customerId: form.customer_id,
+          customer_id: form.customer_id,
           campaign: form.campaign,
           cost: form.cost,
           impressions: form.impressions,
           clicks: form.clicks,
           installs: form.installs,
-          inAppActions: form.in_app_actions,
+          in_app_actions: form.in_app_actions,
         }],
       })
       ElMessage.success('新增成功')

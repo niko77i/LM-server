@@ -495,8 +495,8 @@ watch(newIds, (ids) => {
 // ===== 已有账户编辑 =====
 function initClaimEdits(row) {
   if (!claimEdits[row.account_id]) {
-    const matchedAgent = store.options.agents.find(a => a.name === row.agent)
-    const matchedStatus = store.options.statuses.find(s => s.name === row.status)
+    const matchedAgent = store.options.agents.find(a => a.name === row.agent_name)
+    const matchedStatus = store.options.statuses.find(s => s.name === row.status_name)
     claimEdits[row.account_id] = {
       name: row.name,
       timezone: row.timezone || '',
@@ -597,7 +597,7 @@ function init() {
 async function loadMccOptions() {
   try {
     const res = await mccApi.options()
-    mccOptions.value = res.options || []
+    mccOptions.value = res.data || []
   } catch { mccOptions.value = [] }
 }
 

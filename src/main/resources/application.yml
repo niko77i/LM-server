@@ -25,14 +25,6 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
-mybatis-plus:
-  configuration:
-    map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-  global-config:
-    db-config:
-      id-type: auto
-      column-format: "`%s`"
 
   # SMTP 邮件（QQ邮箱）
   mail:
@@ -47,6 +39,7 @@ mybatis-plus:
           ssl:
             enable: true
 
+  # Jackson JSON 序列化（SNAKE_CASE 统一 snake_case 输出）
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
@@ -57,6 +50,16 @@ mybatis-plus:
     multipart:
       max-file-size: 500MB
       max-request-size: 500MB
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      column-format: "`%s`"
 
 # Actuator 监控端点
 management:

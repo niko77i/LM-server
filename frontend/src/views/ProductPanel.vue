@@ -237,8 +237,8 @@ async function mergeProducts() {
       productsApi.detail(masterId),
       productsApi.detail(mergeId),
     ])
-    masterPkgs = (masterRes.product?.packages || []).map(p => p.package_name)
-    mergePkgs = (mergeRes.product?.packages || []).map(p => p.package_name)
+    masterPkgs = (masterRes.data?.packages || []).map(p => p.package_name)
+    mergePkgs = (mergeRes.data?.packages || []).map(p => p.package_name)
   } catch {}
 
   const hasMatch = masterPkgs.some(n => mergePkgs.includes(n))

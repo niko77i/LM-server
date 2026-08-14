@@ -2,8 +2,11 @@ package com.lmserver.controller.gg;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lmserver.dto.response.AccountDto;
+import com.lmserver.dto.response.AccountListResponse;
 import com.lmserver.dto.response.ApiResponse;
 import com.lmserver.dto.response.PagedResponse;
+import com.lmserver.dto.response.RechargeRecordDto;
 import com.lmserver.dto.response.SyncResult;
 import com.lmserver.entity.gg.AccountMccHistory;
 import com.lmserver.entity.gg.Accounts;
@@ -34,16 +37,16 @@ public class AccountController {
     private final RechargeRecordsMapper rechargeRecordsMapper;
     private final AccountMccHistoryMapper mccHistoryMapper;
 
-    @GetMapping("/list") public PagedResponse<Map<String, Object>> list(
+    @GetMapping("/list") public AccountListResponse list(
             @AuthenticationPrincipal UserPrincipal p, @RequestParam(defaultValue="1") int page,
             @RequestParam(defaultValue="20") int size, @RequestParam(required=false) String search,
-            @RequestParam(required=false) Long statusId, @RequestParam(required=false) Long mccId,
-            @RequestParam(required=false) Long agentId) {
-        return accountService.list(p.getUserId(), page, size, search, statusId, mccId, agentId);
+            @RequestParam(required=false) String status, @RequestParam(name="mcc_id", required=false) Long mccId,
+            @RequestParam(required=false) String agent) {
+        return accountService.list(p.getUserId(), page, size, search, status, mccId, agent);
     }
 
-    @GetMapping("/{id}") public ApiResponse<Accounts> detail(@PathVariable Long id) {
-        Accounts a = accountService.getById(id); return a != null ? ApiResponse.ok(a) : ApiResponse.fail("不存在");
+    @GetMapping("/{id}") public ApiResponse<AccountDto> detail(@PathVariable Long id) {
+        AccountDto a = accountService.detail(id); return a != null ? ApiResponse.ok(a) : ApiResponse.fail("不存在");
     }
 
     @PostMapping("/create") public ApiResponse<Accounts> create(@AuthenticationPrincipal UserPrincipal p,
@@ -112,9 +115,8 @@ public class AccountController {
         return a != null ? ApiResponse.ok(a) : ApiResponse.fail("不存在");
     }
 
-    @GetMapping("/recharge-records") public ApiResponse<List<RechargeRecords>> rechargeRecords(@RequestParam String accountId) {
-        return ApiResponse.ok(rechargeRecordsMapper.selectList(new LambdaQueryWrapper<RechargeRecords>()
-                .eq(RechargeRecords::getAccountId, accountId).orderByDesc(RechargeRecords::getCreatedAt)));
+    @GetMapping("/recharge-records") public ApiResponse<List<RechargeRecordDto>> rechargeRecords(@RequestParam String accountId) {
+        return ApiResponse.ok(rechargeRecordsMapper.selectDtosByAccountId(accountId));
     }
 
     @GetMapping("/mcc-history") public ApiResponse<List<AccountMccHistory>> mccHistory(@RequestParam Long accountId) {

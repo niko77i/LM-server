@@ -52,7 +52,7 @@ function init() {
   }
   rows.value = alive.map(a => ({
     account_id: a.account_id,
-    agent: a.agent || '',
+    agent: a.agent_name || '',
     amount: '',
   }))
   unifiedAmount.value = ''

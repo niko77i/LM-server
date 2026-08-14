@@ -1,7 +1,6 @@
 package com.lmserver.controller.gg;
 
-import com.lmserver.dto.response.ApiResponse;
-import com.lmserver.entity.gg.AdReports;
+import com.lmserver.dto.response.*;
 import com.lmserver.mapper.gg.AdReportsMapper;
 import com.lmserver.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
@@ -49,9 +48,9 @@ public class AdReportAnalysisController {
     // ═══════ Dashboard ═══════
 
     @GetMapping("/dashboard")
-    public ApiResponse<Map<String, Object>> dashboard(@AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(defaultValue = "") String productName, @RequestParam(defaultValue = "") String region,
-            @RequestParam(defaultValue = "") String fromDate, @RequestParam(defaultValue = "") String toDate) {
+    public ApiResponse<DashboardDto> dashboard(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(name="product_name", defaultValue = "") String productName, @RequestParam(defaultValue = "") String region,
+            @RequestParam(name="from_date", defaultValue = "") String fromDate, @RequestParam(name="to_date", defaultValue = "") String toDate) {
 
         Long userId = principal.getUserId();
         List<Object> params = new ArrayList<>();
@@ -68,24 +67,18 @@ public class AdReportAnalysisController {
         double avgCtr = totalImpressions > 0 ? Math.round(totalClicks / totalImpressions * 10000.0) / 10000.0 : 0;
         double avgCvr = totalClicks > 0 ? Math.round(totalInstalls / totalClicks * 10000.0) / 10000.0 : 0;
 
-        Map<String, Object> summaryMap = new LinkedHashMap<>();
-        summaryMap.put("total_cost", Math.round(totalCost * 100.0) / 100.0);
-        summaryMap.put("total_impressions", (long) totalImpressions);
-        summaryMap.put("total_clicks", (long) totalClicks);
-        summaryMap.put("total_installs", (long) totalInstalls);
-        summaryMap.put("total_in_app", Math.round(totalInApp * 100.0) / 100.0);
-        summaryMap.put("avg_cpi", avgCpi);
-        summaryMap.put("avg_ctr", avgCtr);
-        summaryMap.put("avg_cvr", avgCvr);
+        DashboardSummaryDto summaryDto = new DashboardSummaryDto(
+                Math.round(totalCost * 100.0) / 100.0, (long) totalImpressions, (long) totalClicks,
+                (long) totalInstalls, Math.round(totalInApp * 100.0) / 100.0, avgCpi, avgCtr, avgCvr);
 
         // 环比
-        Map<String, Object> periodCompare = calcPeriodCompare(userId, productName, region, fromDate, toDate, summaryMap);
+        Map<String, Double> periodCompare = calcPeriodCompare(userId, productName, region, fromDate, toDate, summary);
 
         // 异常检测
-        List<Map<String, Object>> anomalies = detectAnomalies(where, params);
+        List<AnomalyDto> anomalies = detectAnomalies(where, params);
 
         // Campaign 分组统计
-        List<Map<String, Object>> campaigns = queryCampaignStats(where, params);
+        List<CampaignStatDto> campaigns = queryCampaignStats(where, params);
 
         // 素材关联数
         long assetCount = 0;
@@ -95,23 +88,17 @@ public class AdReportAnalysisController {
                 Long.class, productName);
         }
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("summary", summaryMap);
-        result.put("period_compare", periodCompare);
-        result.put("anomalies", anomalies);
-        result.put("campaigns", campaigns);
-        result.put("asset_count", assetCount);
-        return ApiResponse.ok(result);
+        return ApiResponse.ok(new DashboardDto(summaryDto, periodCompare, anomalies, campaigns, assetCount));
     }
 
     // ═══════ Trends ═══════
 
     @GetMapping("/trends")
-    public ApiResponse<Map<String, Object>> trends(@AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(defaultValue = "") String productName, @RequestParam(defaultValue = "") String region,
-            @RequestParam(defaultValue = "") String fromDate, @RequestParam(defaultValue = "") String toDate,
+    public ApiResponse<TrendDto> trends(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(name="product_name", defaultValue = "") String productName, @RequestParam(defaultValue = "") String region,
+            @RequestParam(name="from_date", defaultValue = "") String fromDate, @RequestParam(name="to_date", defaultValue = "") String toDate,
             @RequestParam(defaultValue = "cpi") String metric,
-            @RequestParam(defaultValue = "product_name") String groupBy) {
+            @RequestParam(name="group_by", defaultValue = "product_name") String groupBy) {
 
         Long userId = principal.getUserId();
         List<Object> params = new ArrayList<>();
@@ -124,28 +111,28 @@ public class AdReportAnalysisController {
             + "FROM ad_reports WHERE " + where + " GROUP BY " + groupCol + ", report_date ORDER BY report_date",
             params.toArray());
 
-        Map<String, List<Map<String, Object>>> seriesMap = new LinkedHashMap<>();
+        Map<String, List<TrendPointDto>> seriesMap = new LinkedHashMap<>();
         for (var r : rows) {
             String name = String.valueOf(r.get("name"));
             seriesMap.computeIfAbsent(name, k -> new ArrayList<>())
-                .add(Map.of("date", r.get("report_date"), "value", computeMetric(r, metric)));
+                .add(new TrendPointDto(r.get("report_date"), computeMetric(r, metric)));
         }
 
-        List<Map<String, Object>> series = new ArrayList<>();
+        List<TrendSeriesDto> series = new ArrayList<>();
         for (var e : seriesMap.entrySet()) {
-            series.add(Map.of("name", e.getKey(), "data", e.getValue()));
+            series.add(new TrendSeriesDto(e.getKey(), e.getValue()));
         }
-        return ApiResponse.ok(Map.of("series", series));
+        return ApiResponse.ok(new TrendDto(series));
     }
 
     // ═══════ Compare ═══════
 
     @GetMapping("/compare")
-    public ApiResponse<List<Map<String, Object>>> compare(@AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(defaultValue = "") String productName, @RequestParam(defaultValue = "") String region,
-            @RequestParam(defaultValue = "product_name") String groupBy,
-            @RequestParam(defaultValue = "") String fromDate, @RequestParam(defaultValue = "") String toDate,
-            @RequestParam(defaultValue = "cpi") String sortBy) {
+    public ApiResponse<List<CompareItemDto>> compare(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(name="product_name", defaultValue = "") String productName, @RequestParam(defaultValue = "") String region,
+            @RequestParam(name="group_by", defaultValue = "product_name") String groupBy,
+            @RequestParam(name="from_date", defaultValue = "") String fromDate, @RequestParam(name="to_date", defaultValue = "") String toDate,
+            @RequestParam(name="sort_by", defaultValue = "cpi") String sortBy) {
 
         Long userId = principal.getUserId();
         List<Object> params = new ArrayList<>();
@@ -157,50 +144,50 @@ public class AdReportAnalysisController {
             + "SUM(clicks) AS total_clicks, SUM(installs) AS total_installs, SUM(in_app_actions) AS total_in_app "
             + "FROM ad_reports WHERE " + where + " GROUP BY " + groupCol, params.toArray());
 
-        List<Map<String, Object>> items = new ArrayList<>();
+        List<CompareItemDto> items = new ArrayList<>();
         for (var r : rows) {
             double cost = toDouble(r.get("total_cost"));
             double imp = toDouble(r.get("total_impressions"));
             double clicks = toDouble(r.get("total_clicks"));
             double inst = toDouble(r.get("total_installs"));
             double inApp = toDouble(r.get("total_in_app"));
-            items.add(Map.of(
-                "name", r.get("name"),
-                "total_cost", Math.round(cost * 100.0) / 100.0,
-                "total_impressions", (long) imp,
-                "total_clicks", (long) clicks,
-                "total_installs", (long) inst,
-                "total_in_app", Math.round(inApp * 100.0) / 100.0,
-                "cpi", inApp > 0 ? Math.round(cost / inApp * 100.0) / 100.0 : 0,
-                "ctr", imp > 0 ? Math.round(clicks / imp * 10000.0) / 10000.0 : 0,
-                "cvr", clicks > 0 ? Math.round(inst / clicks * 10000.0) / 10000.0 : 0));
+            items.add(new CompareItemDto(
+                String.valueOf(r.get("name")),
+                Math.round(cost * 100.0) / 100.0, (long) imp, (long) clicks, (long) inst,
+                Math.round(inApp * 100.0) / 100.0,
+                inApp > 0 ? Math.round(cost / inApp * 100.0) / 100.0 : 0,
+                imp > 0 ? Math.round(clicks / imp * 10000.0) / 10000.0 : 0,
+                clicks > 0 ? Math.round(inst / clicks * 10000.0) / 10000.0 : 0));
         }
-        items.sort((a, b) -> Double.compare(toDouble(b.get(sortBy)), toDouble(a.get(sortBy))));
+        items.sort((a, b) -> Double.compare(getField(b, sortBy), getField(a, sortBy)));
         return ApiResponse.ok(items);
     }
 
     // ═══════ Stats ═══════
 
     @GetMapping("/stats")
-    public ApiResponse<Map<String, Object>> stats(@AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(defaultValue = "") String productName, @RequestParam(defaultValue = "") String region,
-            @RequestParam(defaultValue = "") String fromDate, @RequestParam(defaultValue = "") String toDate) {
+    public ApiResponse<AdStatsDto> stats(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(name="product_name", defaultValue = "") String productName, @RequestParam(defaultValue = "") String region,
+            @RequestParam(name="from_date", defaultValue = "") String fromDate, @RequestParam(name="to_date", defaultValue = "") String toDate) {
 
         Long userId = principal.getUserId();
         List<Object> params = new ArrayList<>();
         String where = buildWhere(userId, productName, region, fromDate, toDate, params);
 
         Map<String, Object> s = querySummary(where, params);
-        s.put("record_count", jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM ad_reports WHERE " + where, Long.class, params.toArray()));
-        return ApiResponse.ok(s);
+        long recordCount = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM ad_reports WHERE " + where, Long.class, params.toArray());
+        return ApiResponse.ok(new AdStatsDto(
+                toDouble(s.get("total_cost")), ((Number) s.get("total_impressions")).longValue(),
+                ((Number) s.get("total_clicks")).longValue(), ((Number) s.get("total_installs")).longValue(),
+                toDouble(s.get("total_in_app")), recordCount));
     }
 
     // ═══════ Dates ═══════
 
     @GetMapping("/dates")
-    public ApiResponse<Map<String, Object>> dates(@AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(defaultValue = "") String productName, @RequestParam(defaultValue = "") String region) {
+    public ApiResponse<AdDatesDto> dates(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(name="product_name", defaultValue = "") String productName, @RequestParam(defaultValue = "") String region) {
 
         Long userId = principal.getUserId();
         List<Object> params = new ArrayList<>();
@@ -221,13 +208,13 @@ public class AdReportAnalysisController {
 
         Map<String, Object> datesMap = new LinkedHashMap<>();
         for (var r : rows) datesMap.put(String.valueOf(r.get("report_date")), r.get("cnt"));
-        return ApiResponse.ok(Map.of("dates", datesMap));
+        return ApiResponse.ok(new AdDatesDto(datesMap));
     }
 
     // ═══════ Analyze ═══════
 
     @PostMapping("/analyze")
-    public ApiResponse<Map<String, Object>> analyze(@AuthenticationPrincipal UserPrincipal principal,
+    public ApiResponse<AnalyzeResultDto> analyze(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, Object> body) {
         Long userId = principal.getUserId();
         String productName = String.valueOf(body.getOrDefault("product_name", ""));
@@ -238,17 +225,13 @@ public class AdReportAnalysisController {
         List<Object> params = new ArrayList<>();
         String where = buildWhere(userId, productName, region, "", "", params);
 
-        // 构建数据摘要
         Map<String, Object> summary = querySummary(where, params);
-        List<Map<String, Object>> campaigns = queryCampaignStats(where, params);
-        Map<String, Object> dataCtx = Map.of("summary", summary, "top_campaigns", campaigns.subList(0, Math.min(5, campaigns.size())));
+        List<CampaignStatDto> campaigns = queryCampaignStats(where, params);
+        Map<String, Object> dataCtx = Map.of("summary", summary, "top_campaigns",
+                campaigns.subList(0, Math.min(5, campaigns.size())));
 
-        // 返回数据上下文供前端调用 AI
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("question", question);
-        result.put("data_context", dataCtx);
-        result.put("suggestion", "请前端将数据上下文提交至配置的AI服务进行分析");
-        return ApiResponse.ok(result);
+        return ApiResponse.ok(new AnalyzeResultDto(question, dataCtx,
+                "请前端将数据上下文提交至配置的AI服务进行分析"));
     }
 
     // ═══════ 辅助方法 ═══════
@@ -283,36 +266,33 @@ public class AdReportAnalysisController {
         }
     }
 
-    private List<Map<String, Object>> queryCampaignStats(String where, List<Object> params) {
+    private List<CampaignStatDto> queryCampaignStats(String where, List<Object> params) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
             "SELECT campaign, SUM(cost) AS total_cost, SUM(installs) AS total_installs, "
             + "SUM(impressions) AS total_impressions, SUM(clicks) AS total_clicks, SUM(in_app_actions) AS total_in_app "
             + "FROM ad_reports WHERE " + where + " AND campaign IS NOT NULL AND campaign != '' "
             + "GROUP BY campaign ORDER BY total_cost DESC", params.toArray());
-        List<Map<String, Object>> result = new ArrayList<>();
+        List<CampaignStatDto> result = new ArrayList<>();
         for (var r : rows) {
             double cost = toDouble(r.get("total_cost"));
             double imp = toDouble(r.get("total_impressions"));
             double clicks = toDouble(r.get("total_clicks"));
             double inst = toDouble(r.get("total_installs"));
             double inApp = toDouble(r.get("total_in_app"));
-            result.add(Map.of(
-                "campaign", r.get("campaign"),
-                "total_cost", Math.round(cost * 100.0) / 100.0,
-                "total_installs", Math.round(inst * 100.0) / 100.0,
-                "total_impressions", (long) imp,
-                "total_clicks", (long) clicks,
-                "total_in_app", Math.round(inApp * 100.0) / 100.0,
-                "avg_cpi", inApp > 0 ? Math.round(cost / Math.max(inApp, 1) * 100.0) / 100.0 : 0,
-                "ctr", imp > 0 ? Math.round(clicks / Math.max(imp, 1) * 10000.0) / 10000.0 : 0,
-                "cvr", clicks > 0 ? Math.round(inst / Math.max(clicks, 1) * 10000.0) / 10000.0 : 0));
+            result.add(new CampaignStatDto(
+                String.valueOf(r.get("campaign")),
+                Math.round(cost * 100.0) / 100.0, Math.round(inst * 100.0) / 100.0,
+                (long) imp, (long) clicks, Math.round(inApp * 100.0) / 100.0,
+                inApp > 0 ? Math.round(cost / Math.max(inApp, 1) * 100.0) / 100.0 : 0,
+                imp > 0 ? Math.round(clicks / Math.max(imp, 1) * 10000.0) / 10000.0 : 0,
+                clicks > 0 ? Math.round(inst / Math.max(clicks, 1) * 10000.0) / 10000.0 : 0));
         }
         return result;
     }
 
-    private Map<String, Object> calcPeriodCompare(Long userId, String productName, String region,
+    private Map<String, Double> calcPeriodCompare(Long userId, String productName, String region,
             String fromDate, String toDate, Map<String, Object> currentSummary) {
-        Map<String, Object> period = new LinkedHashMap<>();
+        Map<String, Double> period = new LinkedHashMap<>();
         if (fromDate.isBlank() || toDate.isBlank()) return period;
         try {
             LocalDate fd = LocalDate.parse(fromDate), td = LocalDate.parse(toDate);
@@ -331,20 +311,19 @@ public class AdReportAnalysisController {
                 double currCost = toDouble(currentSummary.get("total_cost"));
                 period.put("cost_change_pct", Math.round((currCost - prevCost) / prevCost * 10000.0) / 100.0);
                 period.put("installs_change_pct", prevInstalls > 0
-                    ? Math.round((toDouble(currentSummary.get("total_installs")) - prevInstalls) / prevInstalls * 10000.0) / 100.0 : 0);
+                    ? Math.round((toDouble(currentSummary.get("total_installs")) - prevInstalls) / prevInstalls * 10000.0) / 100.0 : 0d);
                 double prevCpi = prevInApp > 0 ? prevCost / prevInApp : 0;
                 double currCpi = toDouble(currentSummary.get("avg_cpi"));
                 period.put("cpi_change_pct", prevCpi > 0
-                    ? Math.round((currCpi - prevCpi) / prevCpi * 10000.0) / 100.0 : 0);
+                    ? Math.round((currCpi - prevCpi) / prevCpi * 10000.0) / 100.0 : 0d);
             }
         } catch (Exception ignored) {}
         return period;
     }
 
-    private List<Map<String, Object>> detectAnomalies(String where, List<Object> params) {
-        List<Map<String, Object>> anomalies = new ArrayList<>();
+    private List<AnomalyDto> detectAnomalies(String where, List<Object> params) {
+        List<AnomalyDto> anomalies = new ArrayList<>();
         try {
-            // 按 campaign, report_date 分组，按日期倒序
             List<Map<String, Object>> allStats = jdbcTemplate.queryForList(
                 "SELECT campaign, report_date, SUM(cost) AS day_cost, SUM(installs) AS day_installs, "
                 + "SUM(in_app_actions) AS day_in_app FROM ad_reports WHERE " + where
@@ -375,25 +354,33 @@ public class AdReportAnalysisController {
                 double avgRecentCpi = recentInAppSum > 0 ? recentCostSum / recentInAppSum : 0;
                 double avgOlderCpi = olderInAppSum > 0 ? olderCostSum / olderInAppSum : 0;
 
-                // 花费暴涨 > 50% 但安装下降
                 if (avgOlderCost > 0 && avgRecentCost > avgOlderCost * 1.5 && avgRecentInstalls < avgOlderInstalls) {
-                    anomalies.add(Map.of(
-                        "campaign", entry.getKey(), "date", recent.get(0).get("report_date"),
-                        "type", "cost_spike",
-                        "detail", "花费暴涨" + Math.round((avgRecentCost / avgOlderCost - 1) * 100) + "%，安装下降"
+                    anomalies.add(new AnomalyDto(entry.getKey(), recent.get(0).get("report_date"), "cost_spike",
+                        "花费暴涨" + Math.round((avgRecentCost / avgOlderCost - 1) * 100) + "%，安装下降"
                             + Math.round((1 - avgRecentInstalls / Math.max(avgOlderInstalls, 1)) * 100) + "%"));
                 }
-                // CPI 飙升 > 30%
                 if (avgOlderCpi > 0 && avgRecentCpi > avgOlderCpi * 1.3) {
-                    anomalies.add(Map.of(
-                        "campaign", entry.getKey(), "date", recent.get(0).get("report_date"),
-                        "type", "cpi_spike",
-                        "detail", "CPI飙升至$" + Math.round(avgRecentCpi * 100.0) / 100.0 + "（均值$"
+                    anomalies.add(new AnomalyDto(entry.getKey(), recent.get(0).get("report_date"), "cpi_spike",
+                        "CPI飙升至$" + Math.round(avgRecentCpi * 100.0) / 100.0 + "（均值$"
                             + Math.round(avgOlderCpi * 100.0) / 100.0 + "）"));
                 }
             }
         } catch (Exception e) { log.warn("异常检测失败: {}", e.getMessage()); }
         return anomalies;
+    }
+
+    /** Compare 排序辅助 — 按字段名从 CompareItemDto 取值 */
+    private double getField(CompareItemDto item, String field) {
+        return switch (field) {
+            case "total_cost" -> item.getTotalCost();
+            case "total_installs" -> item.getTotalInstalls();
+            case "total_impressions" -> item.getTotalImpressions();
+            case "total_clicks" -> item.getTotalClicks();
+            case "total_in_app" -> item.getTotalInApp();
+            case "ctr" -> item.getCtr();
+            case "cvr" -> item.getCvr();
+            default -> item.getCpi();
+        };
     }
 
     private double computeMetric(Map<String, Object> r, String metric) {
@@ -418,10 +405,10 @@ public class AdReportAnalysisController {
 
     /** 跨用户对比 — 同一产品不同用户的 CPI 聚合对比，按 avg_cpi 升序 */
     @GetMapping("/cross-user")
-    public ApiResponse<Map<String, Object>> crossUser(
+    public ApiResponse<CrossUserResultDto> crossUser(
             @RequestParam String productName,
-            @RequestParam(defaultValue = "") String fromDate,
-            @RequestParam(defaultValue = "") String toDate) {
+            @RequestParam(name="from_date", defaultValue = "") String fromDate,
+            @RequestParam(name="to_date", defaultValue = "") String toDate) {
 
         StringBuilder where = new StringBuilder("1=1");
         List<Object> params = new ArrayList<>();
@@ -437,30 +424,34 @@ public class AdReportAnalysisController {
             + "FROM ad_reports ar LEFT JOIN users u ON ar.user_id=u.id WHERE " + where
             + " GROUP BY ar.user_id, u.display_name, u.username", params.toArray());
 
-        List<Map<String, Object>> users = new ArrayList<>();
+        List<CrossUserDto> users = new ArrayList<>();
         for (var r : rows) {
             double cost = toDouble(r.get("total_cost"));
             double inApp = toDouble(r.get("total_in_app"));
-            users.add(Map.of("user_id", r.get("user_id"), "display_name", r.get("display_name"),
-                    "username", r.get("username"), "total_cost", Math.round(cost * 100.0) / 100.0,
-                    "total_installs", ((Number) r.get("total_installs")).longValue(),
-                    "total_in_app", inApp, "avg_cpi", inApp > 0 ? Math.round(cost / inApp * 100.0) / 100.0 : 0,
-                    "report_days", r.get("report_days")));
+            users.add(new CrossUserDto(
+                    ((Number) r.get("user_id")).longValue(),
+                    String.valueOf(r.get("display_name")),
+                    String.valueOf(r.get("username")),
+                    Math.round(cost * 100.0) / 100.0,
+                    ((Number) r.get("total_installs")).longValue(),
+                    inApp,
+                    inApp > 0 ? Math.round(cost / inApp * 100.0) / 100.0 : 0,
+                    ((Number) r.get("report_days")).longValue()));
         }
-        users.sort((a, b) -> Double.compare(toDouble(a.get("avg_cpi")), toDouble(b.get("avg_cpi"))));
-        return ApiResponse.ok(Map.of("users", users));
+        users.sort((a, b) -> Double.compare(a.getAvgCpi(), b.getAvgCpi()));
+        return ApiResponse.ok(new CrossUserResultDto(users));
     }
 
     // ═══════ Multi-Analysis ═══════
 
     /** 多维自由分析 — X/Y轴指标 + 分组维度 + 散点数据，对齐 Python multi_analysis */
     @GetMapping("/multi-analysis")
-    public ApiResponse<Map<String, Object>> multiAnalysis(
-            @RequestParam(defaultValue = "cost") String xAxis, @RequestParam(defaultValue = "cpi") String yAxis,
-            @RequestParam(defaultValue = "") String sizeBy, @RequestParam(defaultValue = "campaign") String groupBy,
-            @RequestParam(defaultValue = "") String productName, @RequestParam(defaultValue = "") String campaign,
-            @RequestParam(defaultValue = "") String region, @RequestParam(defaultValue = "") String fromDate,
-            @RequestParam(defaultValue = "") String toDate, @AuthenticationPrincipal UserPrincipal principal) {
+    public ApiResponse<MultiAnalysisDto> multiAnalysis(
+            @RequestParam(name="x_axis", defaultValue = "cost") String xAxis, @RequestParam(name="y_axis", defaultValue = "cpi") String yAxis,
+            @RequestParam(name="size_by", defaultValue = "") String sizeBy, @RequestParam(name="group_by", defaultValue = "campaign") String groupBy,
+            @RequestParam(name="product_name", defaultValue = "") String productName, @RequestParam(defaultValue = "") String campaign,
+            @RequestParam(defaultValue = "") String region, @RequestParam(name="from_date", defaultValue = "") String fromDate,
+            @RequestParam(name="to_date", defaultValue = "") String toDate, @AuthenticationPrincipal UserPrincipal principal) {
 
         Long userId = principal.getUserId();
         List<Object> params = new ArrayList<>();
@@ -474,37 +465,33 @@ public class AdReportAnalysisController {
             + "SUM(impressions) AS total_impressions, SUM(clicks) AS total_clicks, SUM(in_app_actions) AS total_in_app "
             + "FROM ad_reports WHERE " + where + " GROUP BY " + groupCol, params.toArray());
 
-        List<Map<String, Object>> points = new ArrayList<>();
+        List<ScatterPointDto> points = new ArrayList<>();
         Map<String, Double> xVals = new LinkedHashMap<>(), yVals = new LinkedHashMap<>();
         for (var r : rows) {
             double x = computeRaw(r, xAxis), y = computeRaw(r, yAxis);
             String name = String.valueOf(r.get("name"));
             double sz = sizeBy.isBlank() ? 0 : computeRaw(r, sizeBy);
-            points.add(Map.of("name", name, "x", Math.round(x * 100.0) / 100.0, "y", Math.round(y * 100.0) / 100.0,
-                    sizeBy.isBlank() ? "" : "size", sz, "total_cost", Math.round(toDouble(r.get("total_cost")) * 100.0) / 100.0));
+            points.add(new ScatterPointDto(name,
+                    Math.round(x * 100.0) / 100.0, Math.round(y * 100.0) / 100.0,
+                    sz, Math.round(toDouble(r.get("total_cost")) * 100.0) / 100.0));
             xVals.put(name, x); yVals.put(name, y);
         }
 
-        // 基本统计
         double xAvg = xVals.values().stream().mapToDouble(Double::doubleValue).average().orElse(0);
         double yAvg = yVals.values().stream().mapToDouble(Double::doubleValue).average().orElse(0);
-
-        // Pearson 相关系数
         double pearson = calcPearson(xVals, yVals, xAvg, yAvg);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("points", points);
-        result.put("x_axis", xAxis); result.put("y_axis", yAxis); result.put("group_by", groupBy);
-        result.put("x_avg", Math.round(xAvg * 100.0) / 100.0); result.put("y_avg", Math.round(yAvg * 100.0) / 100.0);
-        result.put("pearson_r", Math.round(pearson * 10000.0) / 10000.0);
-        result.put("insight", pearson > 0.7 ? xAxis + "与" + yAxis + "呈强正相关(r=" + String.format("%.2f", pearson) + ")"
-                : pearson < -0.7 ? xAxis + "与" + yAxis + "呈强负相关" : "无明显线性相关");
-        return ApiResponse.ok(result);
+        String insight = pearson > 0.7 ? xAxis + "与" + yAxis + "呈强正相关(r=" + String.format("%.2f", pearson) + ")"
+                : pearson < -0.7 ? xAxis + "与" + yAxis + "呈强负相关" : "无明显线性相关";
+
+        return ApiResponse.ok(new MultiAnalysisDto(points, xAxis, yAxis, groupBy,
+                Math.round(xAvg * 100.0) / 100.0, Math.round(yAvg * 100.0) / 100.0,
+                Math.round(pearson * 10000.0) / 10000.0, insight));
     }
 
     /** 多轮 AI 对话 — 带分析上下文 */
     @PostMapping("/multi-ai-chat")
-    public ApiResponse<Map<String, Object>> multiAiChat(@AuthenticationPrincipal UserPrincipal principal,
+    public ApiResponse<MultiAiChatResultDto> multiAiChat(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, Object> body) {
         String productName = String.valueOf(body.getOrDefault("product_name", ""));
         String question = String.valueOf(body.getOrDefault("question", ""));
@@ -517,13 +504,13 @@ public class AdReportAnalysisController {
         String where = buildWhere(userId, productName, "", "", "", params);
 
         Map<String, Object> summary = querySummary(where, params);
-        List<Map<String, Object>> campaigns = queryCampaignStats(where, params);
+        List<CampaignStatDto> campaigns = queryCampaignStats(where, params);
 
         Map<String, Object> ctx = Map.of("summary", summary, "top_campaigns",
                 campaigns.subList(0, Math.min(10, campaigns.size())), "history", history);
 
-        return ApiResponse.ok(Map.of("question", question, "data_context", ctx,
-                "suggestion", "请前端将上下文+历史提交至AI服务获取回复"));
+        return ApiResponse.ok(new MultiAiChatResultDto(question, ctx,
+                "请前端将上下文+历史提交至AI服务获取回复"));
     }
 
     // ── 统计辅助 ──

@@ -42,7 +42,7 @@ const form = reactive({ name: '', mcc_id: '', level_id: '', parent_mcc_id: '' })
 
 async function init() {
   const res = await mccApi.options()
-  parentOpts.value = (res.options || []).filter(m => m.id !== props.editId)
+  parentOpts.value = (res.data || []).filter(m => m.id !== props.editId)
   if (props.editId) {
     const mcc = store.mccList.find(m => m.id === props.editId)
     if (mcc) Object.assign(form, { name: mcc.name || '', mcc_id: mcc.mcc_id || '', level_id: mcc.level_id || '', parent_mcc_id: mcc.parent_mcc_id || '' })

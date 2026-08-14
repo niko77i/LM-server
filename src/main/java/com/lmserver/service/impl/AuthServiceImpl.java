@@ -116,18 +116,18 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public java.util.List<java.util.Map<String, Object>> getUserNames(com.lmserver.security.UserPrincipal principal) {
-        var users = usersMapper.selectList(null);
+    public java.util.List<com.lmserver.dto.response.UserBriefDto> getUserNames(com.lmserver.security.UserPrincipal principal) {
+        var users = usersMapper.selectUserBriefs(null, null);
         boolean isDev = "developer".equals(principal.getRole());
         return users.stream()
                 .filter(u -> !"hidden".equals(u.getRole()))
                 .filter(u -> isDev || !"developer".equals(u.getRole()))
-                .map(u -> {
-                    java.util.Map<String, Object> m = new java.util.HashMap<>();
-                    m.put("id", u.getId()); m.put("username", u.getUsername());
-                    m.put("display_name", u.getDisplayName()); m.put("platform", u.getPlatform());
-                    return m;
-                }).toList();
+                .toList();
+    }
+
+    @Override
+    public com.lmserver.dto.response.UserBriefDto getUserNameById(Long id) {
+        return usersMapper.selectUserBriefById(id);
     }
 
     private UserInfo toUserInfo(Users u) {

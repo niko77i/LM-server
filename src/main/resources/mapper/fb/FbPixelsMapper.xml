@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lmserver.mapper.fb.FbPixelsMapper">
+
+    <select id="selectFbPixelDtos" resultType="com.lmserver.dto.response.FbPixelDto">
+        SELECT p.id, p.pixel_bm_id, p.pixel_name, p.pixel_id, p.created_at,
+               pb.name AS bm_name,
+               pb.bm_id AS bm_bm_id
+        FROM fb_pixels p
+        LEFT JOIN fb_pixel_bms pb ON p.pixel_bm_id = pb.id
+        <where>
+            1 = 1
+            <if test="search != null and search != ''">
+                AND (p.pixel_name LIKE CONCAT('%', #{search}, '%') OR p.pixel_id LIKE CONCAT('%', #{search}, '%'))
+            </if>
+        </where>
+        ORDER BY p.created_at DESC
+    </select>
+
+</mapper>

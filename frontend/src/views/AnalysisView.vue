@@ -757,7 +757,7 @@ async function loadFilterOptions() {
     if (filterProduct.value.length) params.product_name = filterProduct.value.join(',')
     const res = await reportsApi.list(params)
     const items = res.items || []
-    filterProducts.value = [...new Set(items.map(r => r.productName || r.product_name).filter(Boolean))]
+    filterProducts.value = [...new Set(items.map(r => r.product_name).filter(Boolean))]
     filterRegions.value = [...new Set(items.map(r => r.region).filter(Boolean))]
   } catch {}
 }

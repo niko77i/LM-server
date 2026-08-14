@@ -303,8 +303,8 @@ async function loadData() {
 async function loadOptions() {
   try { const r = await fbApi.bmOptions(); bmOptions.value = r.data || [] } catch(e) {}
   try { const r = await fbApi.listFbUsers(); fbUsers.value = r.users || [] } catch(e) {}
-  try { const r = await client.get('/sales-persons/list'); salesOptions.value = r.sales_persons || [] } catch(e) {}
-  try { const r = await client.get('/regions/list'); regionOptions.value = (r.regions || []).map(r => typeof r === 'string' ? { name: r } : r) } catch(e) {}
+  try { const r = await client.get('/sales-persons/list'); salesOptions.value = r.items || [] } catch(e) {}
+  try { const r = await client.get('/regions/list'); regionOptions.value = (r.items || []).map(r => typeof r === 'string' ? { name: r } : r) } catch(e) {}
   try {
     const pxBmRes = await fbApi.pixelBmOptions()
     pixelBmGroups.value = []
@@ -316,8 +316,8 @@ async function loadOptions() {
 
 // 快速刷新地区/商务选项（每次打开弹窗时调用，确保最新）
 async function refreshOptions() {
-  try { const r = await client.get('/sales-persons/list'); salesOptions.value = r.sales_persons || [] } catch(e) {}
-  try { const r = await client.get('/regions/list'); regionOptions.value = (r.regions || []).map(r => typeof r === 'string' ? { name: r } : r) } catch(e) {}
+  try { const r = await client.get('/sales-persons/list'); salesOptions.value = r.items || [] } catch(e) {}
+  try { const r = await client.get('/regions/list'); regionOptions.value = (r.items || []).map(r => typeof r === 'string' ? { name: r } : r) } catch(e) {}
 }
 
 async function openCreate() {
@@ -346,13 +346,13 @@ async function handleSave() {
     // 地区：如果是手动输入的新地区，自动创建
     if (form.region && !regionOptions.value.some(r => (typeof r === 'string' ? r : r.name) === form.region)) {
       await client.post('/regions/create', { name: form.region, timezone: '' })
-      try { const r = await client.get('/regions/list'); regionOptions.value = (r.regions || []).map(r => typeof r === 'string' ? { name: r } : r) } catch(e) {}
+      try { const r = await client.get('/regions/list'); regionOptions.value = (r.items || []).map(r => typeof r === 'string' ? { name: r } : r) } catch(e) {}
     }
     // 商务：如果是手动输入的新商务（值为字符串表示新名字），先创建再获取 ID
     if (typeof form.sales_person_id === 'string' && form.sales_person_id) {
       const res = await client.post('/sales-persons/create', { name: form.sales_person_id })
       form.sales_person_id = res.id
-      try { const r = await client.get('/sales-persons/list'); salesOptions.value = r.sales_persons || [] } catch(e) {}
+      try { const r = await client.get('/sales-persons/list'); salesOptions.value = r.items || [] } catch(e) {}
     }
     const data = { ...form, lines: formLines.value }
     editingId.value ? await fbApi.updateProduct(editingId.value, data) : await fbApi.createProduct(data)

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lmserver.mapper.gg.RechargeRecordsMapper">
+
+    <!-- 按账户 ID 查询充值记录（LEFT JOIN agents 返回代理名称），对齐 GG-Server -->
+    <select id="selectDtosByAccountId" resultType="com.lmserver.dto.response.RechargeRecordDto">
+        SELECT r.id, r.account_id, r.amount,
+               COALESCE(a.name, '') AS agent_name,
+               r.operator, r.status, r.sheets_synced, r.sheets_error, r.created_at
+        FROM recharge_records r
+        LEFT JOIN agents a ON r.agent_id = a.id
+        WHERE r.account_id = #{accountId}
+        ORDER BY r.created_at DESC
+    </select>
+
+</mapper>

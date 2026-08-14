@@ -2,6 +2,9 @@ package com.lmserver.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lmserver.dto.response.FbAccountDto;
+import com.lmserver.dto.response.FbBmDto;
+import com.lmserver.dto.response.FbProductDto;
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.fb.*;
 import com.lmserver.mapper.fb.*;
@@ -25,14 +28,12 @@ public class FbServiceImpl implements FbService {
     // BM
     @Override
     /** BM 列表查询 — 支持名称/ID搜索和状态筛选 */
-    public PagedResponse<FbBms> listBms(Long ownerId, int page, int size, String search, String status) {
-        var qw = new LambdaQueryWrapper<FbBms>().eq(FbBms::getOwnerId, ownerId).isNull(FbBms::getDeletedAt);
-        if (search != null && !search.isBlank())
-            qw.and(w -> w.like(FbBms::getName, search).or().like(FbBms::getBmId, search));
-        if (status != null && !status.isBlank()) qw.eq(FbBms::getStatus, status);
-        qw.orderByDesc(FbBms::getCreatedAt);
-        var pg = bmMapper.selectPage(new Page<>(page, size), qw);
-        return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
+    public PagedResponse<FbBmDto> listBms(Long ownerId, int page, int size, String search, String status) {
+        Page<FbBmDto> pg = new Page<>(page, size);
+        List<FbBmDto> items = bmMapper.selectFbBmDtosNormal(pg, ownerId,
+                search != null && !search.isBlank() ? search : null,
+                status != null && !status.isBlank() ? status : null);
+        return PagedResponse.of(items, pg.getTotal(), page, size);
     }
     /** 按 ID 查询 BM */
     @Override public FbBms getBmById(Long id) { return bmMapper.selectById(id); }
@@ -65,15 +66,14 @@ public class FbServiceImpl implements FbService {
     // Account
     @Override
     /** 账户列表查询 — 多条件筛选（名称/账号ID/状态） */
-    public PagedResponse<FbAccounts> listAccounts(Long ownerId, int page, int size, String search, Long statusId) {
-        var qw = new LambdaQueryWrapper<FbAccounts>().eq(FbAccounts::getOwnerId, ownerId).isNull(FbAccounts::getDeletedAt);
-        if (search != null && !search.isBlank())
-            qw.and(w -> w.like(FbAccounts::getName, search).or().like(FbAccounts::getAccountId, search));
-        if (statusId != null) qw.eq(FbAccounts::getStatusId, statusId);
-        qw.orderByDesc(FbAccounts::getCreatedAt);
-        var pg = accMapper.selectPage(new Page<>(page, size), qw);
-        return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
+    public PagedResponse<FbAccountDto> listAccounts(Long ownerId, int page, int size, String search, Long statusId, Long bmId) {
+        Page<FbAccountDto> pg = new Page<>(page, size);
+        List<FbAccountDto> items = accMapper.selectFbAccountDtos(pg, ownerId,
+                search != null && !search.isBlank() ? search : null, statusId, bmId);
+        return PagedResponse.of(items, pg.getTotal(), page, size);
     }
+    /** 按 ID 查询账户 DTO（含状态名称） */
+    @Override public FbAccountDto getAccountDtoById(Long id) { return accMapper.selectFbAccountDtoById(id); }
     /** 按 ID 查询账户 */
     @Override public FbAccounts getAccountById(Long id) { return accMapper.selectById(id); }
     @Override
@@ -102,13 +102,12 @@ public class FbServiceImpl implements FbService {
     // Product
     @Override
     /** 产品列表查询 — 支持名称搜索和地区筛选 */
-    public PagedResponse<FbProducts> listProducts(Long ownerId, int page, int size, String search, String region) {
-        var qw = new LambdaQueryWrapper<FbProducts>().eq(FbProducts::getOwnerId, ownerId);
-        if (search != null && !search.isBlank()) qw.like(FbProducts::getProductName, search);
-        if (region != null && !region.isBlank()) qw.eq(FbProducts::getRegion, region);
-        qw.orderByDesc(FbProducts::getCreatedAt);
-        var pg = prodMapper.selectPage(new Page<>(page, size), qw);
-        return PagedResponse.of(pg.getRecords(), pg.getTotal(), page, size);
+    public PagedResponse<FbProductDto> listProducts(Long ownerId, int page, int size, String search, String region) {
+        Page<FbProductDto> pg = new Page<>(page, size);
+        List<FbProductDto> items = prodMapper.selectFbProductDtos(pg, ownerId,
+                search != null && !search.isBlank() ? search : null,
+                region != null && !region.isBlank() ? region : null);
+        return PagedResponse.of(items, pg.getTotal(), page, size);
     }
     /** 按 ID 查询产品 */
     @Override public FbProducts getProductById(Long id) { return prodMapper.selectById(id); }

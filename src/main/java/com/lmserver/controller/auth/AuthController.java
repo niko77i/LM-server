@@ -4,6 +4,7 @@ import com.lmserver.dto.request.LoginRequest;
 import com.lmserver.dto.request.RegisterRequest;
 import com.lmserver.dto.response.ApiResponse;
 import com.lmserver.dto.response.LoginResponse;
+import com.lmserver.dto.response.UserBriefDto;
 import com.lmserver.security.UserPrincipal;
 import com.lmserver.service.AuthService;
 import jakarta.validation.Valid;
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -82,12 +84,32 @@ public class AuthController {
         return ApiResponse.ok();
     }
 
+    /** 获取自定义名称 */
+    @GetMapping("/custom-name")
+    public Map<String, Object> getCustomName(@AuthenticationPrincipal UserPrincipal principal) {
+        LoginResponse.UserInfo user = authService.getCurrentUser(principal.getUserId());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        result.put("custom_name", user != null ? user.getCustomName() : "");
+        return result;
+    }
+
     /** 修改邮箱 */
     @PutMapping("/email")
     public ApiResponse<Void> updateEmail(@AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Map<String, String> body) {
         authService.updateEmail(principal.getUserId(), body.get("email"));
         return ApiResponse.ok();
+    }
+
+    /** 获取邮箱 */
+    @GetMapping("/email")
+    public Map<String, Object> getEmail(@AuthenticationPrincipal UserPrincipal principal) {
+        LoginResponse.UserInfo user = authService.getCurrentUser(principal.getUserId());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        result.put("email", user != null ? user.getEmail() : "");
+        return result;
     }
 
     /** 修改 Telegram 用户名 */
@@ -100,18 +122,14 @@ public class AuthController {
 
     /** 获取所有用户名列表（下拉选择用） */
     @GetMapping("/names")
-    public ApiResponse<List<Map<String, Object>>> userNames(@AuthenticationPrincipal UserPrincipal principal) {
+    public ApiResponse<List<UserBriefDto>> userNames(@AuthenticationPrincipal UserPrincipal principal) {
         return ApiResponse.ok(authService.getUserNames(principal));
     }
 
     @GetMapping("/names/{id}")
-    public ApiResponse<Map<String, Object>> userNameById(@PathVariable Long id) {
-        var u = authService.getCurrentUser(id);
-        if (u == null) return ApiResponse.fail("不存在");
-        Map<String, Object> m = new java.util.HashMap<>();
-        m.put("id", u.getId()); m.put("username", u.getUsername());
-        m.put("display_name", u.getDisplayName()); m.put("platform", u.getPlatform());
-        return ApiResponse.ok(m);
+    public ApiResponse<UserBriefDto> userNameById(@PathVariable Long id) {
+        UserBriefDto u = authService.getUserNameById(id);
+        return u != null ? ApiResponse.ok(u) : ApiResponse.fail("不存在");
     }
 
     @PostMapping("/logout")

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lmserver.mapper.gg.MccMapper">
+
+    <select id="selectMccDtos" resultType="com.lmserver.dto.response.MccDto">
+        SELECT m.*,
+               ml.name AS level_name,
+               (SELECT COUNT(*) FROM accounts a WHERE a.mcc_id = m.id AND a.deleted_at IS NULL) AS direct_count
+        FROM mcc m
+        LEFT JOIN mcc_levels ml ON m.level_id = ml.id
+        <where>
+            m.owner_id = #{ownerId}
+            <if test="search != null and search != ''">
+                AND (m.name LIKE CONCAT('%', #{search}, '%') OR m.mcc_id LIKE CONCAT('%', #{search}, '%'))
+            </if>
+            <if test="level != null and level != ''">
+                AND ml.name LIKE CONCAT('%', #{level}, '%')
+            </if>
+        </where>
+        ORDER BY m.created_at DESC
+    </select>
+
+    <select id="selectMccDtoById" resultType="com.lmserver.dto.response.MccDto">
+        SELECT m.*,
+               ml.name AS level_name,
+               (SELECT COUNT(*) FROM accounts a WHERE a.mcc_id = m.id AND a.deleted_at IS NULL) AS direct_count
+        FROM mcc m
+        LEFT JOIN mcc_levels ml ON m.level_id = ml.id
+        WHERE m.id = #{id}
+    </select>
+
+</mapper>

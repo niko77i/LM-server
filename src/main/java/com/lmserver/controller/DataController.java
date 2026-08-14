@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * 数据导入导出控制器 — /api/data/*，用户级数据备份与恢复。
  */
@@ -53,5 +56,14 @@ public class DataController {
     @GetMapping("/history")
     public ApiResponse<?> importHistory(@AuthenticationPrincipal UserPrincipal principal) {
         return ApiResponse.ok(dataService.getImportHistory(principal.getUserId()));
+    }
+
+    /** 导入历史（对齐 GG-Server /api/data/import-history，返回 {success, history} 无 data 层） */
+    @GetMapping("/import-history")
+    public Map<String, Object> importHistoryV2(@AuthenticationPrincipal UserPrincipal principal) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        result.put("history", dataService.getImportHistory(principal.getUserId()));
+        return result;
     }
 }

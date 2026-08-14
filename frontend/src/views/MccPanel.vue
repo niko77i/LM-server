@@ -22,7 +22,7 @@
         <el-table-column type="selection" width="40" />
         <el-table-column prop="name" label="MCC 名称" />
         <el-table-column prop="mcc_id" label="MCC ID" width="150" />
-        <el-table-column prop="level" label="等级" width="70" />
+        <el-table-column prop="level_name" label="等级" width="70" />
         <el-table-column prop="direct_count" label="账户数（直属）" width="110" />
         <el-table-column label="总账户" width="70">
           <template #default="{ row }">{{ row.total_accounts != null ? row.total_accounts : '-' }}</template>

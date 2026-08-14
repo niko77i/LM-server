@@ -26,9 +26,10 @@ public class FbProductController {
     @Autowired private FbProductBmsMapper productBmsMapper;
     @Autowired private FbProductRunnersMapper productRunnersMapper;
     @Autowired private FbLinesMapper linesMapper;
+    @Autowired private FbBmsMapper bmsMapper;
 
     @GetMapping("/list")
-    public PagedResponse<FbProducts> list(@AuthenticationPrincipal UserPrincipal p,
+    public PagedResponse<com.lmserver.dto.response.FbProductDto> list(@AuthenticationPrincipal UserPrincipal p,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String search, @RequestParam(required = false) String region,
             @RequestParam(required = false) String status, @RequestParam(required = false) Boolean archived) {
@@ -157,18 +158,32 @@ public class FbProductController {
     }
 
     @GetMapping("/{id}/detail")
-    public ApiResponse<Map<String, Object>> fullDetail(@PathVariable Long id) {
-        FbProducts prod = productsMapper.selectById(id);
-        if (prod == null) return ApiResponse.fail("不存在");
-        Map<String, Object> m = new HashMap<>();
-        m.put("product", prod);
-        m.put("bms", productBmsMapper.selectList(
-                new LambdaQueryWrapper<FbProductBms>().eq(FbProductBms::getProductId, id)));
-        m.put("runners", productRunnersMapper.selectList(
-                new LambdaQueryWrapper<FbProductRunners>().eq(FbProductRunners::getProductId, id)));
-        m.put("lines", linesMapper.selectList(
-                new LambdaQueryWrapper<FbLines>().eq(FbLines::getProductId, id)));
-        return ApiResponse.ok(m);
+    public ApiResponse<com.lmserver.dto.response.FbProductDto> fullDetail(@PathVariable Long id) {
+        com.lmserver.dto.response.FbProductDto dto = productsMapper.selectFbProductDtoById(id);
+        if (dto == null) return ApiResponse.fail("不存在");
+
+        // 填充集合字段
+        var pbs = productBmsMapper.selectList(
+                new LambdaQueryWrapper<FbProductBms>().eq(FbProductBms::getProductId, id));
+        List<com.lmserver.dto.response.BmBriefDto> bms = new ArrayList<>();
+        for (var pb : pbs) {
+            FbBms bm = bmsMapper.selectById(pb.getBmId());
+            bms.add(new com.lmserver.dto.response.BmBriefDto(
+                    pb.getBmId(), bm != null ? bm.getName() : null, bm != null ? bm.getBmId() : null));
+        }
+        dto.setBms(bms);
+
+        var runners = productRunnersMapper.selectList(
+                new LambdaQueryWrapper<FbProductRunners>().eq(FbProductRunners::getProductId, id));
+        dto.setRunnerIds(runners.stream().map(FbProductRunners::getUserId).toList());
+
+        var lines = linesMapper.selectList(
+                new LambdaQueryWrapper<FbLines>().eq(FbLines::getProductId, id));
+        dto.setLines(lines.stream().map(l ->
+            new com.lmserver.dto.response.LineBriefDto(l.getId(), l.getLineName(), l.getLink(), l.getPixelId())
+        ).toList());
+
+        return ApiResponse.ok(dto);
     }
 
     private Long lng(Map<String, Object> m, String k) { Object v = m.get(k); return v != null ? Long.valueOf(v.toString()) : null; }

@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -63,20 +64,95 @@ public class DelistController {
     }
 
     @GetMapping("/api/delist/pending")
-    public ApiResponse<?> pending(@AuthenticationPrincipal UserPrincipal p) {
-        var list = notifMapper.selectList(
-                new LambdaQueryWrapper<DelistNotifications>()
-                        .eq(DelistNotifications::getUserId, p.getUserId())
-                        .eq(DelistNotifications::getFirstNotified, 0));
-        return ApiResponse.ok(list);
+    public ApiResponse<Map<String, Object>> pending(@AuthenticationPrincipal UserPrincipal p) {
+        Long userId = p.getUserId();
+        String uid = String.valueOf(userId);
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1. 当前用户作为 runner 的活跃产品（未删除、未归档、未暂停）
+        List<Products> runnerProducts = productsMapper.selectList(
+                new LambdaQueryWrapper<Products>()
+                        .isNull(Products::getDeletedAt)
+                        .eq(Products::getIsArchived, 0L)
+                        .and(w -> w.isNull(Products::getStatus)
+                                .or().eq(Products::getStatus, "")
+                                .or().eq(Products::getStatus, "0"))
+                        .and(w -> w.eq(Products::getRunnerIds, "[" + uid + "]")
+                                .or().like(Products::getRunnerIds, "[" + uid + ",%")
+                                .or().like(Products::getRunnerIds, "%, " + uid + ",%")
+                                .or().like(Products::getRunnerIds, "%, " + uid + "]")));
+        if (runnerProducts.isEmpty()) {
+            return ApiResponse.ok(Map.<String, Object>of("notifications", List.of()));
+        }
+        List<Long> productIds = runnerProducts.stream().map(Products::getId).toList();
+
+        // 2. 这些产品下的掉包记录
+        List<DelistChecks> delisted = mapper.selectList(
+                new LambdaQueryWrapper<DelistChecks>()
+                        .in(DelistChecks::getProductId, productIds)
+                        .eq(DelistChecks::getIsDelisted, 1L));
+
+        // 3. 逐个包判定 first / reminder（对齐 Python delist_pending）
+        List<Map<String, Object>> notifications = new ArrayList<>();
+        for (DelistChecks dc : delisted) {
+            Packages pkg = packagesMapper.selectById(dc.getPackageId());
+            if (pkg == null) continue;
+            String pkgStatus = pkg.getStatus() == null ? "" : pkg.getStatus().trim();
+            if (pkgStatus.equals("dropped") || pkgStatus.equals("paused")) continue;
+
+            Products prod = productsMapper.selectById(dc.getProductId());
+            if (prod == null) continue;
+
+            DelistNotifications dn = notifMapper.selectOne(
+                    new LambdaQueryWrapper<DelistNotifications>()
+                            .eq(DelistNotifications::getPackageId, pkg.getId())
+                            .eq(DelistNotifications::getUserId, userId));
+
+            String type;
+            long reminderCount = 0;
+            if (dn == null || dn.getFirstNotified() == null || dn.getFirstNotified() == 0L) {
+                type = "first"; // 尚未首次通知
+            } else if (dn.getDismissedAt() != null
+                    && Duration.between(dn.getDismissedAt(), now).getSeconds() >= 180) {
+                type = "reminder"; // 关闭超过 3 分钟仍未处理
+                reminderCount = dn.getReminderCount() == null ? 0 : dn.getReminderCount();
+            } else {
+                continue; // 已关闭且未满 3 分钟，暂不提醒
+            }
+
+            Map<String, Object> n = new LinkedHashMap<>();
+            n.put("package_id", pkg.getId());
+            n.put("package_name", pkg.getPackageName());
+            n.put("series_name", pkg.getSeriesName() == null ? "" : pkg.getSeriesName());
+            n.put("product_id", prod.getId());
+            n.put("product_name", prod.getProductName());
+            n.put("type", type);
+            n.put("reminder_count", reminderCount);
+            notifications.add(n);
+        }
+        return ApiResponse.ok(Map.<String, Object>of("notifications", notifications));
     }
 
     @PostMapping("/api/delist/dismiss")
-    public ApiResponse<Void> dismiss(@AuthenticationPrincipal UserPrincipal p, @RequestBody Map<String, Long> body) {
-        Long pkgId = body.get("package_id");
-        var n = notifMapper.selectOne(new LambdaQueryWrapper<DelistNotifications>()
+    public ApiResponse<Void> dismiss(@AuthenticationPrincipal UserPrincipal p, @RequestBody Map<String, Object> body) {
+        Long pkgId = body.get("package_id") != null ? Long.valueOf(body.get("package_id").toString()) : null;
+        if (pkgId == null) return ApiResponse.fail("缺少 package_id");
+
+        DelistNotifications n = notifMapper.selectOne(new LambdaQueryWrapper<DelistNotifications>()
                 .eq(DelistNotifications::getPackageId, pkgId).eq(DelistNotifications::getUserId, p.getUserId()));
-        if (n != null) { n.setDismissedAt(LocalDateTime.now()); notifMapper.updateById(n); }
+        LocalDateTime now = LocalDateTime.now();
+        if (n != null) {
+            // 已首次通知，记录关闭时间 + 提醒次数 +1
+            n.setFirstNotified(1L);
+            n.setDismissedAt(now);
+            n.setReminderCount((n.getReminderCount() == null ? 0 : n.getReminderCount()) + 1);
+            notifMapper.updateById(n);
+        } else {
+            DelistNotifications dn = new DelistNotifications();
+            dn.setPackageId(pkgId); dn.setUserId(p.getUserId());
+            dn.setFirstNotified(1L); dn.setDismissedAt(now); dn.setReminderCount(0L);
+            notifMapper.insert(dn);
+        }
         return ApiResponse.ok();
     }
 

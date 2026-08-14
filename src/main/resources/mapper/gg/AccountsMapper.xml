@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lmserver.mapper.gg.AccountsMapper">
+
+    <!-- 分页查询账户 DTO 列表，一条 SQL JOIN 完成关联 -->
+    <select id="selectAccountDtos" resultType="com.lmserver.dto.response.AccountDto">
+        SELECT a.*,
+               m.name AS mcc_name,
+               m.mcc_id AS mcc_code,
+               ag.name AS agent_name,
+               s.name AS status_name
+        FROM accounts a
+        LEFT JOIN mcc m ON a.mcc_id = m.id
+        LEFT JOIN agents ag ON a.agent_id = ag.id
+        LEFT JOIN account_statuses s ON a.status_id = s.id
+        <where>
+            a.owner_id = #{ownerId}
+            AND a.deleted_at IS NULL
+            <if test="search != null and search != ''">
+                AND (a.name LIKE CONCAT('%', #{search}, '%') OR a.account_id LIKE CONCAT('%', #{search}, '%'))
+            </if>
+            <if test="status != null and status != ''">
+                AND a.status_id IN (SELECT id FROM account_statuses WHERE name = #{status} AND owner_id = #{ownerId})
+            </if>
+            <if test="mccId != null">
+                AND a.mcc_id = #{mccId}
+            </if>
+            <if test="agent != null and agent != ''">
+                AND a.agent_id IN (SELECT id FROM agents WHERE name LIKE CONCAT('%', #{agent}, '%') AND owner_id = #{ownerId})
+            </if>
+        </where>
+        ORDER BY a.created_at DESC
+    </select>
+
+    <!-- 按 ID 查询单个账户 DTO（用于详情接口） -->
+    <select id="selectAccountDtoById" resultType="com.lmserver.dto.response.AccountDto">
+        SELECT a.*,
+               m.name AS mcc_name,
+               m.mcc_id AS mcc_code,
+               ag.name AS agent_name,
+               s.name AS status_name
+        FROM accounts a
+        LEFT JOIN mcc m ON a.mcc_id = m.id
+        LEFT JOIN agents ag ON a.agent_id = ag.id
+        LEFT JOIN account_statuses s ON a.status_id = s.id
+        WHERE a.id = #{id}
+          AND a.deleted_at IS NULL
+    </select>
+
+</mapper>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lmserver.mapper.fb.FbAccountsMapper">
+
+    <select id="selectFbAccountDtos" resultType="com.lmserver.dto.response.FbAccountDto">
+        SELECT a.*,
+               s.name AS status_name
+        FROM fb_accounts a
+        LEFT JOIN account_statuses s ON a.status_id = s.id
+        <where>
+            a.owner_id = #{ownerId}
+            AND a.deleted_at IS NULL
+            <if test="search != null and search != ''">
+                AND (a.name LIKE CONCAT('%', #{search}, '%') OR a.account_id LIKE CONCAT('%', #{search}, '%'))
+            </if>
+            <if test="statusId != null">
+                AND a.status_id = #{statusId}
+            </if>
+            <if test="bmId != null">
+                AND a.id IN (SELECT account_id FROM fb_account_bm WHERE bm_id = #{bmId})
+            </if>
+        </where>
+        ORDER BY a.created_at DESC
+    </select>
+
+    <select id="selectFbAccountDtoById" resultType="com.lmserver.dto.response.FbAccountDto">
+        SELECT a.*,
+               s.name AS status_name
+        FROM fb_accounts a
+        LEFT JOIN account_statuses s ON a.status_id = s.id
+        WHERE a.id = #{id}
+          AND a.deleted_at IS NULL
+    </select>
+
+</mapper>

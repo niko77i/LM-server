@@ -3,6 +3,8 @@ package com.lmserver.controller.fb;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lmserver.dto.response.ApiResponse;
+import com.lmserver.dto.response.FbPixelBmDto;
+import com.lmserver.dto.response.FbPixelDto;
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.fb.*;
 import com.lmserver.mapper.fb.*;
@@ -49,26 +51,13 @@ public class FbPixelController {
     // ═══════ Pixel BM ═══════
 
     @GetMapping("/pixel-bms/list")
-    public PagedResponse<Map<String, Object>> listBms(@AuthenticationPrincipal UserPrincipal p,
+    public PagedResponse<FbPixelBmDto> listBms(@AuthenticationPrincipal UserPrincipal p,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String search, @RequestParam(required = false) String status) {
-        var qw = new LambdaQueryWrapper<FbPixelBms>().eq(FbPixelBms::getOwnerId, p.getUserId());
-        if (status != null && !status.isBlank()) qw.eq(FbPixelBms::getStatus, status);
-        else qw.ne(FbPixelBms::getStatus, "deleted");
-        if (search != null && !search.isBlank())
-            qw.and(w -> w.like(FbPixelBms::getName, search).or().like(FbPixelBms::getBmId, search));
-        qw.orderByDesc(FbPixelBms::getCreatedAt);
-        var pg = pixelBmMapper.selectPage(new Page<>(page, size), qw);
-
-        List<Map<String, Object>> items = new ArrayList<>();
-        for (FbPixelBms bm : pg.getRecords()) {
-            Map<String, Object> item = new HashMap<>();
-            item.put("id", bm.getId()); item.put("name", bm.getName()); item.put("bm_id", bm.getBmId());
-            item.put("status", bm.getStatus()); item.put("note", bm.getNote());
-            item.put("pixel_count", pixelMapper.selectCount(
-                    new LambdaQueryWrapper<FbPixels>().eq(FbPixels::getPixelBmId, bm.getId())));
-            items.add(item);
-        }
+        Page<FbPixelBmDto> pg = new Page<>(page, size);
+        List<FbPixelBmDto> items = pixelBmMapper.selectFbPixelBmDtos(pg, p.getUserId(),
+                search != null && !search.isBlank() ? search : null,
+                status != null && !status.isBlank() ? status : "deleted");
         return PagedResponse.of(items, pg.getTotal(), page, size);
     }
 
@@ -117,24 +106,12 @@ public class FbPixelController {
     // ═══════ Pixel ═══════
 
     @GetMapping("/pixels/list")
-    public PagedResponse<Map<String, Object>> listPixels(@AuthenticationPrincipal UserPrincipal p,
+    public PagedResponse<FbPixelDto> listPixels(@AuthenticationPrincipal UserPrincipal p,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String search) {
-        var qw = new LambdaQueryWrapper<FbPixels>();
-        if (search != null && !search.isBlank())
-            qw.and(w -> w.like(FbPixels::getPixelName, search).or().like(FbPixels::getPixelId, search));
-        var pg = pixelMapper.selectPage(new Page<>(page, size), qw);
-
-        List<Map<String, Object>> items = new ArrayList<>();
-        for (FbPixels px : pg.getRecords()) {
-            Map<String, Object> item = new HashMap<>();
-            item.put("id", px.getId()); item.put("pixel_name", px.getPixelName()); item.put("pixel_id", px.getPixelId());
-            item.put("pixel_bm_id", px.getPixelBmId());
-            FbPixelBms bm = pixelBmMapper.selectById(px.getPixelBmId());
-            item.put("bm_name", bm != null ? bm.getName() : "");
-            item.put("bm_bm_id", bm != null ? bm.getBmId() : "");
-            items.add(item);
-        }
+        Page<FbPixelDto> pg = new Page<>(page, size);
+        List<FbPixelDto> items = pixelMapper.selectFbPixelDtos(pg,
+                search != null && !search.isBlank() ? search : null);
         return PagedResponse.of(items, pg.getTotal(), page, size);
     }
 

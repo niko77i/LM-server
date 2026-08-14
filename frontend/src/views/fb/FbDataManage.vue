@@ -164,7 +164,7 @@ async function handleExport() {
   if (dateRange.value) { p.date_from = dateRange.value[0]; p.date_to = dateRange.value[1] }
   try {
     const qs = new URLSearchParams(p).toString()
-    const token = localStorage.getItem('access_token')
+    const token = localStorage.getItem('token')
     const resp = await fetch(`/api/fb/reports/export?${qs}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })

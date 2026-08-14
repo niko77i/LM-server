@@ -155,7 +155,7 @@ watch(() => form.status, (newStatus, oldStatus) => {
 
 async function init() {
   const res = await mccApi.options()
-  mccOptions.value = res.options || []
+  mccOptions.value = res.data || []
   // 确保选项已加载
   if (!store.options.agents.length) await store.loadAgents()
   if (!store.options.statuses.length) await store.loadStatuses()
@@ -226,8 +226,8 @@ async function submit() {
           `  名称：${ex.name}\n` +
           `  ID：${ex.account_id}\n` +
           `  时区：${ex.timezone || '无'}\n` +
-          `  代理：${ex.agent || '无'}\n` +
-          `  状态：${ex.status || '未知'}\n` +
+          `  代理：${ex.agent_name || '无'}\n` +
+          `  状态：${ex.status_name || '未知'}\n` +
           `  MCC：${ex.mcc_name ? ex.mcc_name + ' (' + ex.mcc_code + ')' : '未分配'}\n` +
           `  到手时间：${ex.acquired_date || '无'}\n\n` +
           `是否将该账户转移至当前用户？`,

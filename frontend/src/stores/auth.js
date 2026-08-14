@@ -27,8 +27,8 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(username, password) {
       const res = await authApi.login(username, password)
-      const d = res.data || res  // Java 返回 {success, data:{accessToken, user}}
-      this.token = d.accessToken
+      const d = res.data || res  // Java 返回 {success, data:{access_token, user}}
+      this.token = d.access_token
       this.user = d.user
       this.isLoggedIn = true
       if (this.isDeveloper) {
@@ -36,7 +36,7 @@ export const useAuthStore = defineStore('auth', {
       } else {
         this.currentPlatform = d.user?.platform || 'gg'
       }
-      localStorage.setItem('token', d.accessToken)
+      localStorage.setItem('token', d.access_token)
       localStorage.setItem('user', JSON.stringify(d.user))
       return res
     },

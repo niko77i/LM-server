@@ -2,10 +2,10 @@ package com.lmserver.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lmserver.dto.response.MccDto;
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.gg.Accounts;
 import com.lmserver.entity.gg.Mcc;
-import com.lmserver.entity.common.MccLevels;
 import com.lmserver.mapper.gg.AccountsMapper;
 import com.lmserver.mapper.gg.MccMapper;
 import com.lmserver.mapper.common.MccLevelsMapper;
@@ -28,53 +28,28 @@ public class MccServiceImpl implements MccService {
     @Autowired private AccountsMapper accountsMapper;
 
     @Override
-    public PagedResponse<Map<String, Object>> list(Long ownerId, int page, int size, String search, Long levelId) {
-        var qw = new LambdaQueryWrapper<Mcc>().eq(Mcc::getOwnerId, ownerId);
-        if (search != null && !search.isBlank())
-            qw.and(w -> w.like(Mcc::getName, search).or().like(Mcc::getMccId, search));
-        if (levelId != null) qw.eq(Mcc::getLevelId, levelId);
-        qw.orderByDesc(Mcc::getCreatedAt);
-        var pg = mccMapper.selectPage(new Page<>(page, size), qw);
+    public PagedResponse<MccDto> list(Long ownerId, int page, int size, String search, String level) {
+        Page<MccDto> pg = new Page<>(page, size);
+        List<MccDto> items = mccMapper.selectMccDtos(pg, ownerId,
+                search != null && !search.isBlank() ? search : null,
+                level != null && !level.isBlank() ? level : null);
 
-        // Build enriched items
-        List<Map<String, Object>> items = new ArrayList<>();
-        // Cache level names
-        Map<Long, String> levelCache = new HashMap<>();
-        for (Mcc m : pg.getRecords()) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", m.getId());
-            item.put("name", m.getName());
-            item.put("mcc_id", m.getMccId());
-            item.put("parent_mcc_id", m.getParentMccId());
-            item.put("level_id", m.getLevelId());
-            item.put("owner_id", m.getOwnerId());
-            item.put("created_at", m.getCreatedAt());
-            // Level name
-            if (m.getLevelId() != null) {
-                String lvName = levelCache.computeIfAbsent(m.getLevelId(),
-                        lid -> { MccLevels lv = mccLevelsMapper.selectById(lid); return lv != null ? lv.getName() : ""; });
-                item.put("level", lvName);
-            } else {
-                item.put("level", "");
-            }
-            // Direct account count
-            long directCount = accountsMapper.selectCount(
-                    new LambdaQueryWrapper<Accounts>().eq(Accounts::getMccId, m.getId()).isNull(Accounts::getDeletedAt));
-            item.put("direct_count", directCount);
-            // is_owner
-            item.put("is_owner", m.getOwnerId().equals(ownerId));
-            items.add(item);
-        }
-
-        // Batch compute total_accounts (subtree count) — lazy compute
-        for (Map<String, Object> item : items) {
-            Long mid = (Long) item.get("id");
-            long total = accountsMapper.selectCount(
-                    new LambdaQueryWrapper<Accounts>().isNull(Accounts::getDeletedAt)); // simplified: all accounts
-            item.put("total_accounts", directCountInSubtree(mid, new HashSet<>()));
+        // 填充 isOwner 和 totalAccountCount（递归计算子树账户数）
+        for (MccDto dto : items) {
+            dto.setOwner(dto.getOwnerId() != null && dto.getOwnerId().equals(ownerId));
+            dto.setTotalAccountCount(directCountInSubtree(dto.getId(), new HashSet<>()));
         }
 
         return PagedResponse.of(items, pg.getTotal(), page, size);
+    }
+
+    @Override
+    public MccDto detail(Long id) {
+        MccDto dto = mccMapper.selectMccDtoById(id);
+        if (dto != null) {
+            dto.setTotalAccountCount(directCountInSubtree(dto.getId(), new HashSet<>()));
+        }
+        return dto;
     }
 
     private long directCountInSubtree(Long mccId, Set<Long> visited) {

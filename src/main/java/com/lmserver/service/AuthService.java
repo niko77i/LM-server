@@ -1,10 +1,10 @@
 package com.lmserver.service;
 
 import com.lmserver.dto.response.LoginResponse;
+import com.lmserver.dto.response.UserBriefDto;
 import com.lmserver.security.UserPrincipal;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 认证服务接口 — 登录/注册/Token/个人信息/密码。
@@ -29,5 +29,7 @@ public interface AuthService {
 
     void updateTelegram(Long userId, String telegramUsername);
 
-    List<Map<String, Object>> getUserNames(UserPrincipal principal);
+    List<UserBriefDto> getUserNames(UserPrincipal principal);
+
+    UserBriefDto getUserNameById(Long id);
 }

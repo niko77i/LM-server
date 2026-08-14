@@ -1,16 +1,19 @@
+package com.lmserver.service;
+
+import com.lmserver.dto.response.MccDto;
+import com.lmserver.dto.response.PagedResponse;
+import com.lmserver.entity.gg.Mcc;
+
+import java.util.List;
+
 /**
  * MCC 管理服务接口 — 多条件分页查询(名称/ID搜索+等级筛选)
  */
-
-package com.lmserver.service;
-
-import com.lmserver.dto.response.PagedResponse;
-import com.lmserver.entity.gg.Mcc;
-import java.util.List;
-import java.util.Map;
 public interface MccService {
 
-    PagedResponse<Map<String, Object>> list(Long ownerId, int page, int size, String search, Long levelId);
+    PagedResponse<MccDto> list(Long ownerId, int page, int size, String search, String level);
+
+    MccDto detail(Long id);
 
     Mcc getById(Long id);
 

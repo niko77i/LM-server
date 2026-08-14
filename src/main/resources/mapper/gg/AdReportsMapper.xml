@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lmserver.mapper.gg.AdReportsMapper">
+
+    <!-- 汇总查询：按条件聚合，用于 dashboard/stats/analyze 等端点 -->
+    <select id="selectSummary" resultType="java.util.LinkedHashMap">
+        SELECT COALESCE(SUM(cost), 0) AS total_cost,
+               COALESCE(SUM(impressions), 0) AS total_impressions,
+               COALESCE(SUM(clicks), 0) AS total_clicks,
+               COALESCE(SUM(installs), 0) AS total_installs,
+               COALESCE(SUM(in_app_actions), 0) AS total_in_app
+        FROM ad_reports
+        WHERE user_id = #{userId}
+        <if test="productName != null and productName != ''">
+            AND product_name = #{productName}
+        </if>
+        <if test="region != null and region != ''">
+            AND region = #{region}
+        </if>
+        <if test="fromDate != null and fromDate != ''">
+            AND report_date &gt;= #{fromDate}
+        </if>
+        <if test="toDate != null and toDate != ''">
+            AND report_date &lt;= #{toDate}
+        </if>
+    </select>
+
+</mapper>

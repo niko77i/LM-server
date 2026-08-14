@@ -3,6 +3,7 @@ package com.lmserver.controller.fb;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lmserver.dto.response.ApiResponse;
+import com.lmserver.dto.response.FbAccountDto;
 import com.lmserver.dto.response.PagedResponse;
 import com.lmserver.entity.fb.FbAccountBm;
 import com.lmserver.entity.fb.FbAccountBmHistory;
@@ -35,15 +36,16 @@ public class FbAccountController {
     @Autowired private FbAccountBmHistoryMapper accountBmHistoryMapper;
 
     @GetMapping("/list")
-    public PagedResponse<FbAccounts> list(@AuthenticationPrincipal UserPrincipal principal,
+    public PagedResponse<FbAccountDto> list(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String search, @RequestParam(required = false) Long statusId) {
-        return fbService.listAccounts(principal.getUserId(), page, size, search, statusId);
+            @RequestParam(required = false) String search, @RequestParam(required = false) Long statusId,
+            @RequestParam(name = "bm_id", required = false) Long bmId) {
+        return fbService.listAccounts(principal.getUserId(), page, size, search, statusId, bmId);
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<FbAccounts> detail(@PathVariable Long id) {
-        FbAccounts a = fbService.getAccountById(id);
+    public ApiResponse<FbAccountDto> detail(@PathVariable Long id) {
+        FbAccountDto a = fbService.getAccountDtoById(id);
         return a != null ? ApiResponse.ok(a) : ApiResponse.fail("账户不存在");
     }
 

@@ -107,7 +107,7 @@
               </el-select>
             </div>
             <div class="inline-edit-cell" v-else>
-              <span class="inline-cell-text">{{ row.agent || '—' }}</span>
+              <span class="inline-cell-text">{{ row.agent_name || '—' }}</span>
               <el-button link size="small" class="inline-edit-btn" @click.stop="startEditAgent(row)">✏️</el-button>
             </div>
           </template>
@@ -123,7 +123,7 @@
               </el-select>
             </div>
             <div class="inline-edit-cell" v-else>
-              <el-tag size="small" class="status-tag" :type="row.status === '存活' ? 'success' : row.status === '验证' ? 'warning' : row.status === '死亡' ? 'danger' : 'info'">{{ row.status || '未知' }}</el-tag>
+              <el-tag size="small" class="status-tag" :type="row.status_name === '存活' ? 'success' : row.status_name === '验证' ? 'warning' : row.status_name === '死亡' ? 'danger' : 'info'">{{ row.status_name || '未知' }}</el-tag>
               <el-button link size="small" class="inline-edit-btn" @click.stop="startEditStatus(row)">✏️</el-button>
             </div>
           </template>
@@ -389,7 +389,7 @@ function onTimezoneBlur() {
 function startEditAgent(row) {
   editingAgentId.value = row.id
   // 根据 row.agent 名称找到对应的 agent_id
-  const found = agentOptions.value.find(a => a.name === row.agent)
+  const found = agentOptions.value.find(a => a.name === row.agent_name)
   editAgentValue.value = found ? found.id : null
   agentPending = false
 }
@@ -400,13 +400,12 @@ function cancelAgentEdit() {
 }
 async function saveAgent(row) {
   const v = editAgentValue.value ?? null
-  const currentAgentId = agentOptions.value.find(a => a.name === row.agent)?.id ?? null
+  const currentAgentId = agentOptions.value.find(a => a.name === row.agent_name)?.id ?? null
   if (v === currentAgentId) { cancelAgentEdit(); return }
   agentPending = true
   try {
     await store.updateAccount(row.id, { agent_id: v })
     const a = agentOptions.value.find(x => x.id === v)
-    row.agent = a ? a.name : null
     row.agent_name = a ? a.name : null
     ElMessage.success('代理已更新')
   } catch (e) {
@@ -424,7 +423,7 @@ function onAgentBlur() {
 function startEditStatus(row) {
   editingStatusId.value = row.id
   // 根据 row.status 名称找到对应的 status_id
-  const found = store.options.statuses.find(s => s.name === row.status)
+  const found = store.options.statuses.find(s => s.name === row.status_name)
   editStatusValue.value = found ? found.id : null
   statusPending = false
 }
@@ -435,13 +434,12 @@ function cancelStatusEdit() {
 }
 async function saveStatus(row) {
   const v = editStatusValue.value ?? null
-  const currentStatusId = store.options.statuses.find(s => s.name === row.status)?.id ?? null
+  const currentStatusId = store.options.statuses.find(s => s.name === row.status_name)?.id ?? null
   if (v === currentStatusId) { cancelStatusEdit(); return }
   statusPending = true
   try {
     await store.updateAccount(row.id, { status_id: v })
     const s = store.options.statuses.find(x => x.id === v)
-    row.status = s ? s.name : null
     row.status_name = s ? s.name : null
     // 后端会自动处理 status_changed_date，这里先乐观更新
     row.status_changed_date = new Date().toISOString().slice(0, 10)

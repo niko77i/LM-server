@@ -71,13 +71,13 @@ public class FontController {
      * 排序规则：最近使用的字体排最前面，其余按文件名排序。
      */
     @GetMapping("/list")
-    public ApiResponse<List<Map<String, Object>>> list() {
+    public ApiResponse<List<com.lmserver.dto.response.FontDto>> list() {
         return ApiResponse.ok(scan());
     }
 
     /** 扫描 fonts/ 目录及系统字体目录，构建字体列表 */
-    private List<Map<String, Object>> scan() {
-        List<Map<String, Object>> fonts = new ArrayList<>();
+    private List<com.lmserver.dto.response.FontDto> scan() {
+        List<com.lmserver.dto.response.FontDto> fonts = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         List<String> recent = recent();
 
@@ -96,7 +96,7 @@ public class FontController {
                     .forEach(p -> {
                         String id = strip(p);
                         if (seen.add(id))
-                            fonts.add(Map.of("id", id, "name", id, "source", "user"));
+                            fonts.add(new com.lmserver.dto.response.FontDto(id, id, "user"));
                     });
             }
         } catch (Exception e) {
@@ -108,7 +108,7 @@ public class FontController {
         for (String name : new String[]{"simhei", "msyh", "simsun", "arial", "kaiu", "fangsong"}) {
             if (seen.add(name)
                     && (Files.exists(sysDir.resolve(name + ".ttf")) || Files.exists(sysDir.resolve(name + ".ttc"))))
-                fonts.add(Map.of("id", name, "name", name, "source", "system"));
+                fonts.add(new com.lmserver.dto.response.FontDto(name, name, "system"));
         }
         return fonts;
     }

@@ -10,6 +10,7 @@ import com.lmserver.security.UserPrincipal;
 import com.lmserver.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,10 +35,11 @@ public class ProductController {
     @Autowired private com.lmserver.mapper.gg.ProductRunnersMapper productRunnersMapper;
     @Autowired private com.lmserver.mapper.common.UsersMapper usersMapper;
     @Autowired private com.lmserver.mapper.common.SalesPersonsMapper salesPersonsMapper;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     @GetMapping("/list")
     /** 分页列表查询 — 支持多条件筛选 */
-    public PagedResponse<Map<String, Object>> list(
+    public PagedResponse<com.lmserver.dto.response.ProductDto> list(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -47,75 +49,82 @@ public class ProductController {
         return productService.list(principal.getUserId(), page, size, search, region, status);
     }
 
+    /** 产品成效素材列表（前端复制链接用），返回 {success, assets:[...]} */
+    @GetMapping("/{id}/assets")
+    public Map<String, Object> assets(@PathVariable Long id) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        try {
+            List<Map<String, Object>> assets = jdbcTemplate.queryForList(
+                    "SELECT v.*, pa.added_by, pa.added_at, u.display_name AS added_by_name " +
+                    "FROM product_assets pa " +
+                    "JOIN videos v ON pa.video_id = v.id AND pa.video_owner_id = v.owner_id " +
+                    "LEFT JOIN users u ON pa.added_by = u.id " +
+                    "WHERE pa.product_id = ? ORDER BY pa.added_by, pa.added_at DESC", id);
+            result.put("success", true);
+            result.put("assets", assets);
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+        return result;
+    }
+
     /** 产品详情 — 含包列表/runners/关联账户/MCC信息，所有字段对齐前端期望 */
     @GetMapping("/{id}/detail")
-    public ApiResponse<Map<String, Object>> detail(@PathVariable Long id) {
-        Products p = productService.getById(id);
-        if (p == null) return ApiResponse.fail("产品不存在");
+    public ApiResponse<com.lmserver.dto.response.ProductDetailDto> detail(@PathVariable Long id) {
+        com.lmserver.dto.response.ProductDto base = productsMapper.selectProductDtoById(id);
+        if (base == null) return ApiResponse.fail("产品不存在");
 
-        // 构建产品富对象
-        Map<String, Object> product = new LinkedHashMap<>();
-        product.put("id", p.getId());
-        product.put("product_name", p.getProductName());
-        product.put("kpi", p.getKpi());
-        product.put("region", p.getRegion());
-        product.put("status", p.getStatus());
-        product.put("customer", p.getCustomer());
-        product.put("owner_id", p.getOwnerId());
-        product.put("agency_ratio", p.getAgencyRatio());
-        product.put("is_archived", p.getIsArchived());
-        product.put("created_at", p.getCreatedAt());
-        product.put("runner_ids", p.getRunnerIds());
-        product.put("mcc_id", p.getMccId());
-        product.put("sales_person_id", p.getSalesPersonId());
-
-        // JOIN: MCC
-        if (p.getMccId() != null) {
-            Mcc mcc = mccMapper.selectById(p.getMccId());
-            if (mcc != null) {
-                product.put("mcc_name", mcc.getName());
-                product.put("mcc_code", mcc.getMccId());
-            }
-        }
-        // JOIN: sales_person
-        if (p.getSalesPersonId() != null) {
-            var sp = salesPersonsMapper.selectById(p.getSalesPersonId());
-            if (sp != null) product.put("sales_person", sp.getName());
-        }
+        com.lmserver.dto.response.ProductDetailDto dto = new com.lmserver.dto.response.ProductDetailDto();
+        // 复制父类字段
+        dto.setId(base.getId());
+        dto.setProductName(base.getProductName());
+        dto.setKpi(base.getKpi());
+        dto.setRegion(base.getRegion());
+        dto.setStatus(base.getStatus());
+        dto.setCustomer(base.getCustomer());
+        dto.setOwnerId(base.getOwnerId());
+        dto.setAgencyRatio(base.getAgencyRatio());
+        dto.setIsArchived(base.getIsArchived());
+        dto.setCreatedAt(base.getCreatedAt());
+        dto.setMccId(base.getMccId());
+        dto.setSalesPersonId(base.getSalesPersonId());
+        dto.setMccName(base.getMccName());
+        dto.setMccCode(base.getMccCode());
+        dto.setSalesPersonName(base.getSalesPersonName());
+        dto.setAssetCount(base.getAssetCount());
+        dto.setRelatedAccountCount(base.getRelatedAccountCount());
 
         // 包列表
         var pkgs = packagesMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Packages>()
                         .eq(Packages::getProductId, id));
-        product.put("packages", pkgs);
+        dto.setPackages(pkgs.stream().map(p -> new com.lmserver.dto.response.PackageDto(
+                p.getId(), p.getProductId(), p.getSeriesName(), p.getPackageName(),
+                p.getUrl(), p.getStatus(), p.getCreatedAt())).toList());
 
         // 关联账户 + status_count
         List<Map<String, Object>> relatedAccounts = new ArrayList<>();
         Map<String, Long> statusCount = new LinkedHashMap<>();
-        if (p.getMccId() != null) {
-            collectMccAccounts(p.getMccId(), relatedAccounts, new HashSet<>());
+        if (base.getMccId() != null) {
+            collectMccAccounts(base.getMccId(), relatedAccounts, new HashSet<>());
             for (var acct : relatedAccounts) {
                 Object st = acct.get("status");
                 String sname = st != null ? st.toString() : "未知";
                 statusCount.merge(sname, 1L, Long::sum);
             }
         }
-        product.put("related_account_count", relatedAccounts.size());
-        product.put("status_count", statusCount);
-        product.put("related_accounts", relatedAccounts);
+        dto.setRelatedAccounts(relatedAccounts);
+        dto.setStatusCount(statusCount);
 
         // 在跑人员
-        product.put("runners", productRunnersMapper.selectList(
+        var runners = productRunnersMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductRunners>()
-                        .eq(ProductRunners::getProductId, id)));
+                        .eq(ProductRunners::getProductId, id));
+        dto.setRunners(runners);
+        dto.setRunnerIdList(runners.stream().map(ProductRunners::getUserId).toList());
 
-        // 素材数
-        product.put("asset_count", productAssetsMapper.selectCount(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ProductAssets>()
-                        .eq(ProductAssets::getProductId, id)));
-
-        ApiResponse<Map<String, Object>> resp = ApiResponse.ok(product);
-        return resp;
+        return ApiResponse.ok(dto);
     }
 
     @Autowired private com.lmserver.mapper.gg.AccountsMapper accountsMapper;

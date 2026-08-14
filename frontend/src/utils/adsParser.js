@@ -2,6 +2,9 @@
  * Google Ads 竖排数据清洗工具。
  * 从 ToolkitView 提取，ToolkitView 和 AnalysisView 共用。
  *
+ * 字段命名：统一 snake_case（customer_id / in_app_actions / cost_per_in_app），
+ * 对齐后端 /ad-reports/save、/ad-reports/dedup-check 的 rows 载荷。
+ *
  * @param {string} rawText - 粘贴的原始文本
  * @param {object} opts
  * @param {boolean} opts.isYanghu - 养户模式（7列），默认 false
@@ -44,9 +47,9 @@ export function parseAdsData(rawText, { isYanghu = false, includeCampaignId = fa
   let raw
   if (isYanghu) {
     raw = chunks.map(r => ({
-      account: r[0], customerId: r[1],
+      account: r[0], customer_id: r[1],
       campaign: r[2].replace(/-[^-]*$/, '').trim(),
-      campaignStatus: r[3] || '',
+      campaign_status: r[3] || '',
       cost: parseFloat(r[costIdx].replace(/[^0-9.-]+/g, '')) || 0,
       impressions: parseInt(r[imprIdx].replace(/[^0-9]/g, '')) || 0,
       clicks: parseInt(r[clickIdx].replace(/[^0-9]/g, '')) || 0,
@@ -56,23 +59,23 @@ export function parseAdsData(rawText, { isYanghu = false, includeCampaignId = fa
     const inAppIdx = includeCampaignId ? 9 : 8
     const cpiIdx = includeCampaignId ? 10 : 9
     raw = chunks.map(r => ({
-      account: r[0], customerId: r[1],
+      account: r[0], customer_id: r[1],
       campaign: r[2].replace(/-[^-]*$/, '').trim(),
-      campaignStatus: r[3] || '',
+      campaign_status: r[3] || '',
       cost: parseFloat(r[costIdx].replace(/[^0-9.-]+/g, '')) || 0,
       impressions: parseInt(r[imprIdx].replace(/[^0-9]/g, '')) || 0,
       clicks: parseInt(r[clickIdx].replace(/[^0-9]/g, '')) || 0,
       installs: parseFloat((r[installIdx] || '').replace(/[^0-9.-]+/g, '')) || 0,
-      inAppActions: parseFloat((r[inAppIdx] || '').replace(/[^0-9.-]+/g, '')) || 0,
-      costPerInApp: parseFloat((r[cpiIdx] || '').replace(/[^0-9.-]+/g, '')) || 0,
+      in_app_actions: parseFloat((r[inAppIdx] || '').replace(/[^0-9.-]+/g, '')) || 0,
+      cost_per_in_app: parseFloat((r[cpiIdx] || '').replace(/[^0-9.-]+/g, '')) || 0,
     })).filter(d => d.cost > 0)
   }
 
   // 做表聚合
   const zbMap = new Map()
   raw.forEach(d => {
-    const key = d.customerId + '|||' + d.campaign
-    if (!zbMap.has(key)) zbMap.set(key, { account: d.account, customerId: d.customerId, cost: d.cost, campaign: d.campaign })
+    const key = d.customer_id + '|||' + d.campaign
+    if (!zbMap.has(key)) zbMap.set(key, { account: d.account, customer_id: d.customer_id, cost: d.cost, campaign: d.campaign })
     else zbMap.get(key).cost += d.cost
   })
   const zuobiao = Array.from(zbMap.values()).filter(d => d.cost > 0)

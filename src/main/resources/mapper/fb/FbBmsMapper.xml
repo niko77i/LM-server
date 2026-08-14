@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lmserver.mapper.fb.FbBmsMapper">
+
+    <!-- unified 查询：UNION ALL 合并 fb_bms + fb_pixel_bms，用于 /api/fb/bms/unified -->
+    <select id="selectFbBmDtos" resultType="com.lmserver.dto.response.FbBmDto">
+        SELECT b.id, b.name, b.bm_id, b.note, b.status, b.owner_id, b.deleted_at, b.created_at, b.updated_at,
+               'account' AS bm_type,
+               (SELECT COUNT(*) FROM fb_account_bm ab WHERE ab.bm_id = b.id) AS account_count,
+               0 AS pixel_count
+        FROM fb_bms b
+        WHERE b.owner_id = #{ownerId}
+          AND b.deleted_at IS NULL
+        UNION ALL
+        SELECT pb.id, pb.name, pb.bm_id, pb.note, pb.status, pb.owner_id, pb.deleted_at, pb.created_at, pb.updated_at,
+               'pixel' AS bm_type,
+               0 AS account_count,
+               (SELECT COUNT(*) FROM fb_pixels p WHERE p.pixel_bm_id = pb.id) AS pixel_count
+        FROM fb_pixel_bms pb
+        WHERE pb.owner_id = #{ownerId}
+          AND pb.deleted_at IS NULL
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 普通 BM 列表（仅 fb_bms），用于 /api/fb/bms/list -->
+    <select id="selectFbBmDtosNormal" resultType="com.lmserver.dto.response.FbBmDto">
+        SELECT b.*,
+               'account' AS bm_type,
+               (SELECT COUNT(*) FROM fb_account_bm ab WHERE ab.bm_id = b.id) AS account_count,
+               0 AS pixel_count
+        FROM fb_bms b
+        <where>
+            b.owner_id = #{ownerId}
+            AND b.deleted_at IS NULL
+            <if test="search != null and search != ''">
+                AND (b.name LIKE CONCAT('%', #{search}, '%') OR b.bm_id LIKE CONCAT('%', #{search}, '%'))
+            </if>
+            <if test="status != null and status != ''">
+                AND b.status = #{status}
+            </if>
+        </where>
+        ORDER BY b.created_at DESC
+    </select>
+
+</mapper>

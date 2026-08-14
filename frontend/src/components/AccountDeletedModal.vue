@@ -17,7 +17,7 @@
       <el-table-column prop="timezone" label="时区" width="80" />
       <el-table-column label="状态" width="80">
         <template #default="{ row }">
-          <el-tag size="small" type="info">{{ row.status || '未知' }}</el-tag>
+          <el-tag size="small" type="info">{{ row.status_name || '未知' }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="deleted_at" label="删除时间" min-width="120" />
@@ -56,7 +56,7 @@ const filteredAccounts = computed(() => {
   return allAccounts.value.filter(a =>
     (a.account_id || '').toLowerCase().includes(q) ||
     (a.name || '').toLowerCase().includes(q) ||
-    (a.agent || '').toLowerCase().includes(q)
+    (a.agent_name || '').toLowerCase().includes(q)
   )
 })
 
