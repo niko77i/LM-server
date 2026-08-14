@@ -27,6 +27,10 @@ logs/
 config/service-account.json
 *.env
 
+# Google credentials (sensitive — 服务账号私钥，禁止提交)
+src/main/resources/fit-boulevard-503111-u4-812bc02c2000.json
+src/main/resources/google_sheets_credentials.json
+
 # Temp
 temp/
 

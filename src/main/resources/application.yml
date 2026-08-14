@@ -18,7 +18,7 @@ spring:
     url: jdbc:mysql://localhost:3306/lmserver?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: 123456
+    password: ${MYSQL_PASSWORD:123456}
     hikari:
       maximum-pool-size: 30
       minimum-idle: 10
@@ -31,7 +31,7 @@ spring:
     host: smtp.qq.com
     port: 465
     username: 2350574164@qq.com
-    password: vassdzilljbpdibe
+    password: ${SMTP_PASSWORD:vassdzilljbpdibe}
     properties:
       mail:
         smtp:
@@ -82,8 +82,8 @@ jwt:
 # 通知配置
 notification:
   telegram:
-    bot-token: 8705623419:AAHTV7MUQ9xlYe2FGzwgJFJI6AI_afeu07Y
-    chat-id: "-5220122275"
+    bot-token: ${TELEGRAM_BOT_TOKEN:8705623419:AAHTV7MUQ9xlYe2FGzwgJFJI6AI_afeu07Y}
+    chat-id: "${TELEGRAM_CHAT_ID:-5220122275}"
 
 # FFmpeg
 ffmpeg:
